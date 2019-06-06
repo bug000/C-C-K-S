@@ -1,4 +1,7 @@
 import json
+import jieba
+from pyhanlp import *
+from tqdm import tqdm
 
 BEGIN = "B-{}"
 MIDD = "M-{}"
@@ -66,4 +69,47 @@ def load_json_data(data_type):
 
         data_x.append(x_line)
         data_y.append(y_line)
+    return data_x, data_y
+
+
+def load_entity_clf_data(data_type: str):
+    data_dir = r"D:\data\biendata\ccks2019_el\ccks_train_data\clf_data\split\{}.tsv"
+    data_x = []
+    data_y = []
+    with open(data_dir.format(data_type), 'r', encoding='utf-8') as data_rd:
+        for i, line in enumerate(data_rd):
+            ls = line.split("\t")
+            label = ls[0].strip()
+            text_a = ls[3].strip()
+            text_b = ls[4].strip()
+            x_line = []
+            x_line.extend(list(text_a))
+            x_line.append("CLS")
+            x_line.extend(list(text_b))
+
+            data_x.append(x_line)
+            data_y.append(label)
+
+    return data_x, data_y
+
+
+def load_entity_clf_cut_data(data_type: str):
+    data_dir = r"D:\data\biendata\ccks2019_el\ccks_train_data\clf_data\split\{}.tsv.hanlp.tsv"
+    data_x = []
+    data_y = []
+    with open(data_dir.format(data_type), 'r', encoding='utf-8') as data_rd:
+        for i, line in enumerate(tqdm(data_rd.readlines())):
+            ls = line.split("\t")
+            label = ls[0].strip()
+            text_a = ls[3].strip()
+            text_b = ls[4].strip()
+            x_line = []
+            # x_line.extend([term.word for term in HanLP.segment(text_a)])
+            x_line.extend(text_a.split(" "))
+            x_line.append("CLS")
+            # x_line.extend([term.word for term in HanLP.segment(text_b)])
+            x_line.extend(text_b.split(" "))
+            data_x.append(x_line)
+            data_y.append(label)
+
     return data_x, data_y

@@ -9,12 +9,20 @@ def eval_pre():
 
     key_file_path = r"D:\data\biendata\ccks2019_el\ccks_train_data\validate.json"
     # result_file_path = r"D:\data\biendata\ccks2019_el\ccks_train_data\validate.json"
-    result_file_path = r"D:\data\biendata\ccks2019_el\ccks_train_data\validate.pre.nil.json"
-
+    result_file_path = r"D:/data/biendata/ccks2019_el/ccks_train_data/validate.json.pre.json"
+    """
+    f:0.31272443852443776
+    p:0.4023559082892403
+    r:0.32331311527978257
+    
+    f:0.674604976995421
+    p:0.6998009112286925
+    r:0.6875935332157583   
+    """
     def load_mention_ids(file_path):
         return [
-            # [mention["mention"] for mention in json.loads(line)["mention_data"]]
-            [mention["kb_id"] for mention in json.loads(line)["mention_data"]]
+            [mention["mention"] for mention in json.loads(line)["mention_data"]]
+            # [mention["kb_id"] for mention in json.loads(line)["mention_data"]]
             for line in open(file_path, 'r', encoding="utf-8").readlines()
         ]
 
@@ -52,8 +60,12 @@ def eval_pre():
         r_all += r
 
     f_mean = f_all / len(key_mention_ids)
+    p_mean = p_all / len(key_mention_ids)
+    r_mean = r_all / len(key_mention_ids)
 
-    print(f_mean)
+    print("f:{}".format(f_mean))
+    print("p:{}".format(p_mean))
+    print("r:{}".format(r_mean))
 
 
 def eval_crf():
@@ -64,8 +76,8 @@ def eval_crf():
 
 
 def main():
-    eval_crf()
-    # eval_pre()
+    # eval_crf()
+    eval_pre()
 
 
 if __name__ == '__main__':
