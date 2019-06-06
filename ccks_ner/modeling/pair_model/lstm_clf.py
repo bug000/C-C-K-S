@@ -4,8 +4,7 @@ import numpy as np
 import pandas as pd
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
-from keras.layers import Dense, Input, LSTM, Embedding, Dropout, Activation, Conv1D, GRU, CuDNNGRU, CuDNNLSTM, \
-    BatchNormalization
+from keras.layers import Dense, Input, LSTM, Embedding, Dropout, Activation, Conv1D, GRU, CuDNNGRU, CuDNNLSTM, BatchNormalization
 from keras.layers import Bidirectional, GlobalMaxPool1D, MaxPooling1D, Add, Flatten
 from keras.layers import GlobalAveragePooling1D, GlobalMaxPooling1D, concatenate, SpatialDropout1D, SpatialDropout2D
 from keras.models import Model, load_model
@@ -18,13 +17,14 @@ from sklearn.metrics import classification_report
 
 embedding_path = "D:/data/word2vec/zh/test.txt"
 
-train_dir = r"C:\python3workspace\kera_ner_demo\ccks_ner\modeling\pair_model\dt\m3\{}"
+# train_dir = r"C:\python3workspace\kera_ner_demo\ccks_ner\modeling\pair_model\dt\m3\{}"
+train_dir = r"D:\data\biendata\ccks2019_el\entityclf\m4\{}"
 log_filepath = train_dir.format(r"log")
 toka_path = train_dir.format(r"\toka.bin")
 model_path = train_dir.format(r"bilstm_model.hdf5")
 
 root_path = r"D:\data\biendata\ccks2019_el\ccks_train_data\clf_data\split\{}"
-train = pd.read_csv(root_path.format("train.tsv.hanlp.tsv"), sep="\t", nrows=30000, header=None)
+train = pd.read_csv(root_path.format("train.tsv.hanlp.tsv"), sep="\t", nrows=50000, header=None)
 test = pd.read_csv(root_path.format("test.tsv.hanlp.tsv"), sep="\t", nrows=20000, header=None)
 # val = pd.read_csv(root_path.format("validate.tsv.hanlp.tsv"), sep="\t", nrows=100, header=None)
 
@@ -32,16 +32,20 @@ full_text = list(train.iloc[:, 3].values) + \
             list(train.iloc[:, 4].values) + \
             list(test.iloc[:, 3].values) + list(test.iloc[:, 4].values)
 
+s = train.iloc[:, 4].values
+
 y = train.iloc[:, 0]
 y_test = test.iloc[:, 0]
 
 tk = Tokenizer(lower=True, filters='')
+full_text = [str(s) for s in full_text]
 tk.fit_on_texts(full_text)
 
 train_a_tokenized = tk.texts_to_sequences(train.iloc[:, 3].values)
-train_b_tokenized = tk.texts_to_sequences(train.iloc[:, 4].values)
+train_b_tokenized = tk.texts_to_sequences([str(s) for s in train.iloc[:, 4].values])
 test_a_tokenized = tk.texts_to_sequences(test.iloc[:, 3].values)
 test_b_tokenized = tk.texts_to_sequences(test.iloc[:, 4].values)
+
 
 pickle.dump(tk, open(toka_path, 'wb'))
 
@@ -76,7 +80,7 @@ check_point = ModelCheckpoint(model_path, monitor="val_loss", verbose=1, save_be
 
 early_stop = EarlyStopping(monitor="val_loss", mode="min", patience=3)
 
-tb_cb = TensorBoard(log_dir=log_filepath, write_images=False, histogram_freq=1)
+tb_cb = TensorBoard(log_dir=log_filepath)
 
 
 def build_model(lr=0.0, lr_d=0.0):
@@ -116,7 +120,7 @@ def build_model(lr=0.0, lr_d=0.0):
     model.compile(loss="binary_crossentropy", optimizer=Adam(lr=lr, decay=lr_d), metrics=["accuracy"])
 
     model.fit([X_train_a, X_train_b], y_ohe,
-              batch_size=64,
+              batch_size=32,
               epochs=20,
               validation_split=0.3,
               verbose=1,
