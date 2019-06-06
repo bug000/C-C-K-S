@@ -18,8 +18,8 @@ from sklearn.metrics import classification_report
 
 embedding_path = "D:/data/word2vec/zh/test.txt"
 
-# train_dir = r"D:\data\biendata\ccks2019_el\entityclf\m2\{}"
-train_dir = r"C:\python3workspace\kera_ner_demo\ccks_ner\modeling\pair_model\dt\m3\{}"
+train_dir = r"D:\data\biendata\ccks2019_el\entityclf\m4\{}"
+# train_dir = r"C:\python3workspace\kera_ner_demo\ccks_ner\modeling\pair_model\dt\m3\{}"
 log_filepath = train_dir.format(r"log")
 toka_path = train_dir.format(r"\toka.bin")
 model_path = train_dir.format(r"bilstm_model.hdf5")
