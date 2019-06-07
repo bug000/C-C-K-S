@@ -145,7 +145,7 @@ def build_model(lr=0.0, lr_d=0.0):
               epochs=20,
               validation_split=0.3,
               verbose=1,
-              class_weight={0: 1, 1: 10},
+              class_weight={0: 1, 1: 20},
               callbacks=[check_point, early_stop, tb_cb])
     K.clear_session()
     tf.reset_default_graph()
