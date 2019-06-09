@@ -33,8 +33,8 @@ early_stop = EarlyStopping(monitor="val_loss", mode="min", patience=2)
 
 log = TensorBoard(log_dir=log_filepath, write_images=False, write_graph=True, histogram_freq=0)
 
-# emn_path = r'D:\data\bert\chinese_L-12_H-768_A-12'
-# embedding = BERTEmbedding(emn_path, sequence_length=1024)
+emn_path = r'D:\data\bert\chinese_L-12_H-768_A-12'
+embedding = BERTEmbedding(emn_path, sequence_length=1024)
 emn_path = r'D:/data/word2vec/zh/sgns.target.word-word.dynwin5.thr10.neg5.dim300.iter5/sgns.target.word-word.dynwin5.thr10.neg5.dim300.iter5.utf8.txt'
 embedding = WordEmbeddings(emn_path, sequence_length=1024)
 

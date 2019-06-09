@@ -85,7 +85,8 @@ y_ohe = ohe.fit_transform(y.values.reshape(-1, 1))
 
 """call back"""
 check_point = ModelCheckpoint(model_path, monitor="val_loss", verbose=1, save_best_only=True, mode="min")
-early_stop = EarlyStopping(monitor="val_loss", mode="min", patience=3)
+# early_stop = EarlyStopping(monitor="val_loss", mode="min", patience=3)
+early_stop = EarlyStopping(monitor="val_loss", mode="min", patience=5)
 tb_cb = TensorBoard(log_dir=log_filepath)
 
 
@@ -187,6 +188,19 @@ embedding m5
     accuracy                           0.81    215742
    macro avg       0.73      0.86      0.75    215742
 weighted avg       0.90      0.81      0.83    215742
+
+
+
+m6
+              precision    recall  f1-score   support
+
+           0       0.98      0.83      0.90    179485
+           1       0.52      0.93      0.67     36257
+
+    accuracy                           0.84    215742
+   macro avg       0.75      0.88      0.78    215742
+weighted avg       0.91      0.84      0.86    215742
+
 
 
 """
