@@ -1,12 +1,14 @@
 import pickle
 import random
 
+import keras
 import numpy as np
 import tensorflow as tf
 import pandas as pd
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
-from keras.layers import Dense, Input, LSTM, Embedding, Dropout, Activation, Conv1D, GRU, CuDNNGRU, CuDNNLSTM, BatchNormalization
+from keras.layers import Dense, Input, LSTM, Embedding, Dropout, Activation, Conv1D, GRU, CuDNNGRU, CuDNNLSTM, \
+    BatchNormalization, Lambda
 from keras.layers import Bidirectional, GlobalMaxPool1D, MaxPooling1D, Add, Flatten
 from keras.layers import GlobalAveragePooling1D, GlobalMaxPooling1D, concatenate, SpatialDropout1D, SpatialDropout2D
 from keras.models import Model, load_model
@@ -17,6 +19,9 @@ from keras.callbacks import ModelCheckpoint, TensorBoard, EarlyStopping
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import classification_report
 
+import matchzoo as mz
+
+
 seed = 123
 random.seed(seed)
 np.random.seed(seed)
@@ -26,7 +31,7 @@ tf.set_random_seed(seed)
 embedding_path = "D:/data/word2vec/zh/sgns.target.word-word.dynwin5.thr10.neg5.dim300.iter5/sgns.target.word-word.dynwin5.thr10.neg5.dim300.iter5.utf8.txt"
 
 # train_dir = r"C:\python3workspace\kera_ner_demo\ccks_ner\modeling\pair_model\dt\m3\{}"
-train_dir = r"D:\data\biendata\ccks2019_el\entityclf\m7\{}"
+train_dir = r"D:\data\biendata\ccks2019_el\entityclf\m8\{}"
 log_filepath = train_dir.format(r"log")
 toka_path = train_dir.format(r"\toka.bin")
 model_path = train_dir.format(r"bilstm_model.hdf5")
@@ -90,56 +95,78 @@ early_stop = EarlyStopping(monitor="val_loss", mode="min", patience=5)
 tb_cb = TensorBoard(log_dir=log_filepath)
 
 
-def build_model(lr=0.0, lr_d=0.0):
+def _kernel_layer(mu: float, sigma: float) -> keras.layers.Layer:
+    """
+    Gaussian kernel layer in KNRM.
+
+    :param mu: Float, mean of the kernel.
+    :param sigma: Float, sigma of the kernel.
+    :return: `keras.layers.Layer`.
+    """
+
+    def kernel(x):
+        return K.tf.exp(-0.5 * (x - mu) * (x - mu) / sigma / sigma)
+
+    return keras.layers.Activation(kernel)
+
+
+def build_model(_params):
     inp_a = Input(shape=(max_len_a,))
     inp_b = Input(shape=(max_len_b,))
-    x_a = Embedding(nb_words + 1, embed_size, weights=[embedding_matrix], trainable=False)(inp_a)
-    x_b = Embedding(nb_words + 1, embed_size, weights=[embedding_matrix], trainable=False)(inp_b)
-    x_a = SpatialDropout1D(0.3)(x_a)
-    x_b = SpatialDropout1D(0.3)(x_b)
+    q_embed = Embedding(nb_words + 1, embed_size, weights=[embedding_matrix], trainable=False)(inp_a)
+    d_embed = Embedding(nb_words + 1, embed_size, weights=[embedding_matrix], trainable=False)(inp_b)
 
-    xc_a = Bidirectional(CuDNNLSTM(64, return_sequences=True))(x_a)
-    xc_b = Bidirectional(CuDNNLSTM(512, return_sequences=True))(x_b)
+    q_convs = []
+    d_convs = []
+    for i in range(_params['max_ngram']):
+        c = keras.layers.Conv1D(
+            _params['filters'], i + 1,
+            activation=_params['conv_activation_func'],
+            padding='same'
+        )
+        q_convs.append(c(q_embed))
+        d_convs.append(c(d_embed))
 
-    xc_a_3 = Conv1D(16, kernel_size=3, padding='valid', kernel_initializer='he_uniform')(xc_a)
-    xc_a_2 = Conv1D(16, kernel_size=2, padding='valid', kernel_initializer='he_uniform')(xc_a)
+    KM = []
+    for qi in range(_params['max_ngram']):
+        for di in range(_params['max_ngram']):
+            # do not match n-gram with different length if use crossmatch
+            if not _params['use_crossmatch'] and qi != di:
+                continue
+            q_ngram = q_convs[qi]
+            d_ngram = d_convs[di]
+            mm = keras.layers.Dot(axes=[2, 2],
+                                  normalize=True)([q_ngram, d_ngram])
 
-    xc_b_3 = Conv1D(64, kernel_size=3, padding='valid', kernel_initializer='he_uniform')(xc_b)
-    xc_b_2 = Conv1D(64, kernel_size=2, padding='valid', kernel_initializer='he_uniform')(xc_b)
+            for i in range(_params['kernel_num']):
+                mu = 1. / (_params['kernel_num'] - 1) + (2. * i) / (
+                        _params['kernel_num'] - 1) - 1.0
+                sigma = _params['sigma']
+                if mu > 1.0:
+                    sigma = _params['exact_sigma']
+                    mu = 1.0
+                mm_exp = _kernel_layer(mu, sigma)(mm)
+                mm_doc_sum = keras.layers.Lambda(
+                    lambda x: K.tf.reduce_sum(x, 2))(
+                    mm_exp)
+                mm_log = keras.layers.Activation(K.tf.log1p)(mm_doc_sum)
+                mm_sum = keras.layers.Lambda(
+                    lambda x: K.tf.reduce_sum(x, 1))(mm_log)
+                KM.append(mm_sum)
 
-    avg_pool_a3 = GlobalAveragePooling1D()(xc_a_3)
-    max_pool_a3 = GlobalMaxPooling1D()(xc_a_3)
-    avg_pool_a2 = GlobalAveragePooling1D()(xc_a_2)
-    max_pool_a2 = GlobalMaxPooling1D()(xc_a_2)
-
-    avg_pool_b3 = GlobalAveragePooling1D()(xc_b_3)
-    max_pool_b3 = GlobalMaxPooling1D()(xc_b_3)
-    avg_pool_b2 = GlobalAveragePooling1D()(xc_b_2)
-    max_pool_b2 = GlobalMaxPooling1D()(xc_b_2)
-
-    x_a = concatenate([avg_pool_a3, max_pool_a3, avg_pool_a2, max_pool_a2])
-    x_a = BatchNormalization()(x_a)
-    x_a = Dropout(0.3)(Dense(32, activation='relu')(x_a))
-
-    x_b = concatenate([avg_pool_b3, max_pool_b3, avg_pool_b2, max_pool_b2])
-    x_b = BatchNormalization()(x_b)
-    x_b = Dropout(0.1)(Dense(64, activation='relu')(x_b))
-
-    x = concatenate([x_a, x_b])
-    x = BatchNormalization()(x)
-    x = Dropout(0.2)(Dense(64, activation='relu')(x))
-
-    x = Dense(2, activation="sigmoid")(x)
-
+    phi =Lambda(lambda x: K.tf.stack(x, 1))(KM)
+    out = keras.layers.Dense(1, activation='linear')(phi)
     """:fine-tune"""
-    model = Model(inputs=[inp_a, inp_b], outputs=x)
+    model = Model(inputs=[inp_a, inp_b], outputs=out)
     model.trainable = True
     for layer in model.layers[:1]:
         layer.trainable = False
     model.summary()
 
     """:train"""
-    model.compile(loss="binary_crossentropy", optimizer=Adam(lr=lr, decay=lr_d), metrics=["accuracy"])
+    loss = mz.losses.RankCrossEntropyLoss(num_neg=4)
+    optimizer =  'adadelta'
+    model.compile(loss=loss, optimizer=optimizer, metrics=["accuracy"])
     # model.fit_generator
     model.fit([X_train_a, X_train_b], y_ohe,
               batch_size=24,
@@ -154,8 +181,18 @@ def build_model(lr=0.0, lr_d=0.0):
     model = load_model(model_path)
     return model
 
+_params = {
+    "max_ngram":"3",
+    "conv_activation_func":'relu',
+    "filters":128,
+    "kernel_num":21,
+    "sigma":0.1,
+    "exact_sigma":0.001,
+    "use_crossmatch":True,
+}
 
-td_model = build_model(lr=1e-4, lr_d=0)
+
+td_model = build_model(_params)
 
 pred = td_model.predict([X_test_a, X_test_b], batch_size=1024)
 predictions = np.round(np.argmax(pred, axis=1)).astype(int)
