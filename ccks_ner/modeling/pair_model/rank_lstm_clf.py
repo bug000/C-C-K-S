@@ -21,7 +21,6 @@ from sklearn.metrics import classification_report
 
 import matchzoo as mz
 
-
 seed = 123
 random.seed(seed)
 np.random.seed(seed)
@@ -37,11 +36,12 @@ toka_path = train_dir.format(r"\toka.bin")
 model_path = train_dir.format(r"bilstm_model.hdf5")
 
 root_path = r"D:\data\biendata\ccks2019_el\ccks_train_data\clf_data\split\{}"
-train = pd.read_csv(root_path.format("train.tsv.hanlp.tsv"), sep="\t", nrows=50000, header=None)
-test = pd.read_csv(root_path.format("test.tsv.hanlp.tsv"), sep="\t", nrows=20000, header=None)
+train = pd.read_csv(root_path.format("train.tsv.hanlp.tsv"), sep="\t", nrows=500, header=None)
+test = pd.read_csv(root_path.format("test.tsv.hanlp.tsv"), sep="\t", nrows=200, header=None)
 # val = pd.read_csv(root_path.format("validate.tsv.hanlp.tsv"), sep="\t", nrows=100, header=None)
 
-full_text = list(train.iloc[:, 3].values) + list(train.iloc[:, 4].values) + list(test.iloc[:, 3].values) + list(test.iloc[:, 4].values)
+full_text = list(train.iloc[:, 3].values) + list(train.iloc[:, 4].values) + list(test.iloc[:, 3].values) + list(
+    test.iloc[:, 4].values)
 
 s = train.iloc[:, 4].values
 
@@ -57,17 +57,16 @@ train_b_tokenized = tk.texts_to_sequences([str(s) for s in train.iloc[:, 4].valu
 test_a_tokenized = tk.texts_to_sequences(test.iloc[:, 3].values)
 test_b_tokenized = tk.texts_to_sequences(test.iloc[:, 4].values)
 
-
 pickle.dump(tk, open(toka_path, 'wb'))
 
-max_len_a = 50
-max_len_b = 800
+max_len_a = 30
+max_len_b = 30
 X_train_a = pad_sequences(train_a_tokenized, maxlen=max_len_a)
 X_train_b = pad_sequences(train_b_tokenized, maxlen=max_len_b)
 X_test_a = pad_sequences(test_a_tokenized, maxlen=max_len_a)
 X_test_b = pad_sequences(test_b_tokenized, maxlen=max_len_b)
 embed_size = 300
-max_features = 20000
+max_v_len = 10000
 
 
 def get_coefs(word, *arr):
@@ -77,16 +76,15 @@ def get_coefs(word, *arr):
 embedding_index = dict(get_coefs(*o.strip().split(" ")) for o in open(embedding_path, encoding="utf-8"))
 
 word_index = tk.word_index
-nb_words = min(max_features, len(word_index))
+nb_words = min(max_v_len, len(word_index))
 embedding_matrix = np.zeros((nb_words + 1, embed_size))
 for word, i in word_index.items():
-    if i >= max_features: continue
+    if i >= max_v_len: continue
     embedding_vector = embedding_index.get(word)
     if embedding_vector is not None: embedding_matrix[i] = embedding_vector
 
 ohe = OneHotEncoder(sparse=False)
 y_ohe = ohe.fit_transform(y.values.reshape(-1, 1))
-
 
 """call back"""
 check_point = ModelCheckpoint(model_path, monitor="val_loss", verbose=1, save_best_only=True, mode="min")
@@ -113,8 +111,8 @@ def _kernel_layer(mu: float, sigma: float) -> keras.layers.Layer:
 def build_model(_params):
     inp_a = Input(shape=(max_len_a,))
     inp_b = Input(shape=(max_len_b,))
-    q_embed = Embedding(nb_words + 1, embed_size, weights=[embedding_matrix], trainable=False)(inp_a)
-    d_embed = Embedding(nb_words + 1, embed_size, weights=[embedding_matrix], trainable=False)(inp_b)
+    q_embed = Embedding(max_v_len+1, embed_size, weights=[embedding_matrix], trainable=False)(inp_a)
+    d_embed = Embedding(max_v_len+1, embed_size, weights=[embedding_matrix], trainable=False)(inp_b)
 
     q_convs = []
     d_convs = []
@@ -154,7 +152,7 @@ def build_model(_params):
                     lambda x: K.tf.reduce_sum(x, 1))(mm_log)
                 KM.append(mm_sum)
 
-    phi =Lambda(lambda x: K.tf.stack(x, 1))(KM)
+    phi = Lambda(lambda x: K.tf.stack(x, 1))(KM)
     out = keras.layers.Dense(1, activation='linear')(phi)
     """:fine-tune"""
     model = Model(inputs=[inp_a, inp_b], outputs=out)
@@ -164,8 +162,8 @@ def build_model(_params):
     model.summary()
 
     """:train"""
-    loss = mz.losses.RankCrossEntropyLoss(num_neg=4)
-    optimizer =  'adadelta'
+    loss = mz.losses.RankCrossEntropyLoss(num_neg=1)
+    optimizer = 'adadelta'
     model.compile(loss=loss, optimizer=optimizer, metrics=["accuracy"])
     # model.fit_generator
     model.fit([X_train_a, X_train_b], y_ohe,
@@ -173,7 +171,7 @@ def build_model(_params):
               epochs=20,
               validation_split=0.3,
               verbose=1,
-              class_weight={0: 1, 1: 20},
+              # class_weight={0: 1, 1: 20},
               callbacks=[check_point, early_stop, tb_cb])
     K.clear_session()
     tf.reset_default_graph()
@@ -181,16 +179,16 @@ def build_model(_params):
     model = load_model(model_path)
     return model
 
-_params = {
-    "max_ngram":"3",
-    "conv_activation_func":'relu',
-    "filters":128,
-    "kernel_num":21,
-    "sigma":0.1,
-    "exact_sigma":0.001,
-    "use_crossmatch":True,
-}
 
+_params = {
+    "max_ngram": 3,
+    "conv_activation_func": 'tanh',
+    "filters": 128,
+    "kernel_num": 11,
+    "sigma": 0.1,
+    "exact_sigma": 0.001,
+    "use_crossmatch": True,
+}
 
 td_model = build_model(_params)
 
@@ -200,7 +198,6 @@ predictions = np.round(np.argmax(pred, axis=1)).astype(int)
 report = classification_report(y_test, predictions)
 
 print(report)
-
 
 """
 

@@ -26,7 +26,7 @@ tf.set_random_seed(seed)
 embedding_path = "D:/data/word2vec/zh/sgns.target.word-word.dynwin5.thr10.neg5.dim300.iter5/sgns.target.word-word.dynwin5.thr10.neg5.dim300.iter5.utf8.txt"
 
 # train_dir = r"C:\python3workspace\kera_ner_demo\ccks_ner\modeling\pair_model\dt\m3\{}"
-train_dir = r"D:\data\biendata\ccks2019_el\entityclf\m7\{}"
+train_dir = r"D:\data\biendata\ccks2019_el\entityclf\m10\{}"
 log_filepath = train_dir.format(r"log")
 toka_path = train_dir.format(r"\toka.bin")
 model_path = train_dir.format(r"bilstm_model.hdf5")
@@ -146,7 +146,7 @@ def build_model(lr=0.0, lr_d=0.0):
               epochs=20,
               validation_split=0.3,
               verbose=1,
-              class_weight={0: 1, 1: 20},
+              class_weight='auto',
               callbacks=[check_point, early_stop, tb_cb])
     K.clear_session()
     tf.reset_default_graph()
