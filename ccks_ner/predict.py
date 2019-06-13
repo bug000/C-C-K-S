@@ -1,4 +1,6 @@
 import json
+from typing import List
+
 import tensorflow as tf
 
 from kashgari.tasks.seq_labeling import BLSTMCRFModel
@@ -7,20 +9,8 @@ from tqdm import tqdm
 
 class Predicter(object):
 
-    def predict(self, text):
-        raise NotImplementedError
-
-
-class BiLSTMCRFPredicter(Predicter):
-
-    def __init__(self, model_path):
-        with tf.device('/gpu:0'):
-            # mention -> entity_json_line
-            self.subject_dic = self.get_kb_dic()
-
-            self._model = BLSTMCRFModel.load_model(model_path)
-
-    def get_kb_dic(self):
+    @staticmethod
+    def get_kb_dic():
         subject_dict = {}
         kb_path = "D:/data/biendata/ccks2019_el/ccks_train_data/kb_data"
         kr_reader = open(kb_path, 'r', encoding='utf-8')
@@ -30,18 +20,45 @@ class BiLSTMCRFPredicter(Predicter):
 
             """subject"""
             subject = knobj["subject"]
-            if subject in subject_dict:
+            if subject in subject_dict.keys():
                 subject_dict[subject].append(knobj)
             else:
                 subject_dict[subject] = [knobj]
 
             """alias"""
             for sub_alias in knobj["alias"]:
-                if sub_alias in subject_dict:
+                if sub_alias in subject_dict.keys():
                     subject_dict[sub_alias].append(knobj)
                 else:
                     subject_dict[sub_alias] = [knobj]
         return subject_dict
+
+    def predict(self, json_lines: List) ->List:
+        raise NotImplementedError
+
+    def predict_devs(self, dev_path, result_path):
+        result_writer = open(result_path, 'w', encoding="utf-8")
+        json_lines = [json.loads(line) for line in open(dev_path, "r", encoding="utf-8").readlines()]
+
+        pre_line_s = self.predict(json_lines)
+        for pre_line in pre_line_s:
+            result_writer.write(json.dumps(pre_line, ensure_ascii=False) + "\n")
+            result_writer.flush()
+        result_writer.close()
+
+
+class Discriminater(Predicter):
+    pass
+
+
+class BiLSTMCRFPredicter(Predicter):
+
+    def __init__(self, model_path):
+        with tf.device('/gpu:0'):
+            # mention -> entity_json_line
+            self.subject_dic = super().get_kb_dic()
+
+            self._model = BLSTMCRFModel.load_model(model_path)
 
     def token_stream(self, line: str, ngram: int):
         re_list = []
@@ -163,24 +180,12 @@ class BiLSTMCRFPredicter(Predicter):
     def predict_text(self, x_pre):
         return self._model.predict(x_pre, batch_size=1024)
 
-    def predict_devs(self, dev_path):
-        result_path = dev_path+".pre.json"
-
-        result_writer = open(result_path, 'w', encoding="utf-8")
-        json_lines = [json.loads(line) for line in open(dev_path, "r", encoding="utf-8").readlines()]
-
-        pre_line_s = self.predict(json_lines)
-        for pre_line in pre_line_s:
-            result_writer.write(json.dumps(pre_line, ensure_ascii=False) + "\n")
-            result_writer.flush()
-        result_writer.close()
-
 
 def main():
     dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/validate.json"
     model_path = r"D:\data\biendata\ccks2019_el\ner_model"
     crfer = BiLSTMCRFPredicter(model_path)
-    crfer.predict_devs(dev_path)
+    crfer.predict_devs(dev_path, dev_path+".pre.txt")
 
 
 if __name__ == '__main__':
