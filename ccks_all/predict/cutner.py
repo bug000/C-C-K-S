@@ -8,8 +8,10 @@ from keras_preprocessing.sequence import pad_sequences
 import numpy as np
 from tqdm import tqdm
 
-from ccks_ner.eval import eval_pre_text, eval_pre_id
-from ccks_ner.predict import Predicter, Discriminater
+from ccks_all.eval import eval_file
+from ccks_all.predict.predict import Discriminater, Predicter
+
+from ccks_all.static import subject_dict, subject_index
 
 
 class NgramPredicter(Predicter):
@@ -30,7 +32,7 @@ class NgramPredicter(Predicter):
             mention : entity_json_line
         """
         self.entity_set = set()
-        self.subject_dic = super().get_kb_dic()
+        self.subject_dic = subject_dict
         self.load_entity_set()
 
     def dsc_token(self, text: str):
@@ -39,126 +41,6 @@ class NgramPredicter(Predicter):
             for j in range(i, len(text)):
                 token.append(text[j])
                 yield "".join(token), i
-
-    def _save_tk_result(self, tokens, mention_data_set, mention_id_set):
-        for token in tokens:
-            mention_text = token[0]
-            mention_offset = token[1]
-
-            if mention_text in self.subject_dic.keys():
-                entie_s = self.subject_dic.get(mention_text, [])
-                # if mention_text == "艾迪尔海德·伯恩斯坦":
-                #     print(entie_s)
-
-                for entie_json in entie_s:
-                    subject_id = entie_json["subject_id"]
-
-                    # if subject_id not in mention_id_set:
-                    #     mention_id_set.add(subject_id)
-                    mention_data_set.append({
-                        "kb_id": subject_id,
-                        "mention": mention_text,
-                        "offset": mention_offset
-                    })
-
-    def pre_one(self, json_line):
-        mention_data = []
-        mention_id_set = set()
-        text = json_line["text"].lower()
-
-        reg_result = self.dsc_token(text)
-        self._save_tk_result(reg_result, mention_data, mention_id_set)
-
-        json_line["mention_data"] = list(mention_data)
-        return json_line
-
-    def predict(self, json_lines):
-        return list(map(self.pre_one, json_lines))
-
-    def predict_devs(self, dev_path, result_path):
-        result_writer = open(result_path, 'w', encoding="utf-8")
-        json_lines = [json.loads(line) for line in open(dev_path, "r", encoding="utf-8").readlines()]
-
-        pre_line_s = self.predict(json_lines)
-        for pre_line in pre_line_s:
-            result_writer.write(json.dumps(pre_line, ensure_ascii=False) + "\n")
-            result_writer.flush()
-        result_writer.close()
-
-
-class CutPredicter(Predicter):
-
-    @classmethod
-    def load_jieba_dic(cls):
-        jieba.initialize()
-        spic_dic_path = "D:/data/biendata/ccks2019_el/ccks_train_data/entity.cspace.fdic.txt"
-        for word in open(spic_dic_path, "r", encoding="utf-8"):
-            # jieba.add_word(word.strip(), freq=len(word.strip())*100, tag="subject")
-            jieba.add_word(word.strip())
-
-        dic_path = "D:/data/biendata/ccks2019_el/ccks_train_data/entity.fdic.txt"
-        for word in open(dic_path, "r", encoding="utf-8"):
-            # jieba.add_word(word.strip(), freq=len(word.strip())*100, tag="subject")
-            jieba.add_word(word.strip())
-
-        print("load dic.")
-
-    def __init__(self):
-        """
-            mention : entity_json_line
-        """
-        self.subject_dic = super().get_kb_dic()
-        self.load_jieba_dic()
-
-    def dsc_token(self, text: str):
-        fds = re.findall(r"《([^《|》]*)》", text)
-        for fd_str in fds:
-            ind = text.find(fd_str)
-            yield fd_str, ind
-
-    def eng_token(self, text: str):
-        fds = re.findall(r"\b[a-z\d ]{1,100}\b", text)
-        for fd_str in fds:
-            ind = text.find(fd_str)
-            yield fd_str, ind
-
-    def _save_tk_result(self, tokens, mention_data_set):
-        for token in tokens:
-            mention_text = token[0]
-            mention_offset = str(token[1])
-            if mention_text in self.subject_dic.keys():
-                entie_s = self.subject_dic.get(mention_text, [])
-                for entie_json in entie_s:
-                    subject_id = entie_json["subject_id"]
-
-                    # if subject_id not in mention_id_set:
-                    #     mention_id_set.add(subject_id)
-                    mention_data_set.append({
-                        "kb_id": subject_id,
-                        "mention": mention_text,
-                        "offset": mention_offset
-                    })
-
-    def pre_one(self, json_line):
-        mention_data = []
-        text = json_line["text"].lower()
-        jieba_result = jieba.tokenize(text, mode="search", HMM=False)
-        self._save_tk_result(jieba_result, mention_data)
-
-        reg_result = self.dsc_token(text)
-        self._save_tk_result(reg_result, mention_data)
-
-        reg_result = self.eng_token(text)
-        self._save_tk_result(reg_result, mention_data)
-
-        json_line["mention_data"] = list(mention_data)
-        return json_line
-
-    def predict(self, json_lines):
-        return list(map(self.pre_one, json_lines))
-
-
-class CutPredicterBuildDataSet(CutPredicter):
 
     def _save_tk_result_tf(self, tokens, mention_data_set, key_mention_ids):
         for token in tokens:
@@ -186,19 +68,133 @@ class CutPredicterBuildDataSet(CutPredicter):
 
     def pre_one(self, json_line):
         mention_data = []
-        text = json_line["text"]
+        text = json_line["text"].lower()
         key_mention_ids = [m["kb_id"] for m in json_line["mention_data"]]
-        jieba_result = jieba.tokenize(text, mode="search", HMM=False)
-        self._save_tk_result_tf(jieba_result, mention_data, key_mention_ids)
-
         reg_result = self.dsc_token(text)
-        self._save_tk_result_tf(reg_result, mention_data, key_mention_ids)
-
-        reg_result = self.eng_token(text)
         self._save_tk_result_tf(reg_result, mention_data, key_mention_ids)
 
         json_line["mention_data"] = list(mention_data)
         return json_line
+
+    def predict(self, json_lines):
+        return list(map(self.pre_one, json_lines))
+
+
+class CutPredicter(Predicter):
+
+    @classmethod
+    def load_jieba_dic(cls):
+        jieba.initialize()
+        spic_dic_path = "D:/data/biendata/ccks2019_el/ccks_train_data/entity.cspace.fdic.txt"
+        for word in open(spic_dic_path, "r", encoding="utf-8"):
+            # jieba.add_word(word.strip(), freq=len(word.strip())*100, tag="subject")
+            jieba.add_word(word.strip())
+
+        dic_path = "D:/data/biendata/ccks2019_el/ccks_train_data/entity.fdic.txt"
+        for word in open(dic_path, "r", encoding="utf-8"):
+            # jieba.add_word(word.strip(), freq=len(word.strip())*100, tag="subject")
+            jieba.add_word(word.strip())
+
+        print("load dic.")
+
+    def __init__(self):
+        """
+            mention : entity_json_line
+        """
+        self.subject_dic = subject_dict
+        self.load_jieba_dic()
+
+    def dsc_token(self, text: str):
+        fds = re.findall(r"《([^《|》]*)》", text)
+        for fd_str in fds:
+            ind = text.find(fd_str)
+            yield fd_str, ind
+
+    def eng_token(self, text: str):
+        fds = re.findall(r"\b[a-z\d ]{1,100}\b", text)
+        for fd_str in fds:
+            ind = text.find(fd_str)
+            yield fd_str, ind
+
+    # def sim_token(self, text: str):
+    #     fds = re.findall(r"\b[a-z\d ]{1,100}\b", text)
+    #     for fd_str in fds:
+    #         ind = text.find(fd_str)
+    #         yield fd_str, ind
+
+    def jaccard(self, text1, text2):
+        text1 = set(text1)  # 去重；如果不需要就改为list
+        text2 = set(text2)
+        i = text1 & text2  # 交集
+        u = text1 | text2  # 并集
+        jaccard_coefficient = float(len(i) / len(u))
+        return jaccard_coefficient
+
+    def _save_tk_result_tf(self, tokens, mention_data_set, key_mention_ids, contain_set):
+        for token in tokens:
+            mention_text = token[0]
+            mention_offset = str(token[1])
+
+            if mention_text in self.subject_dic.keys():
+                entie_s = self.subject_dic.get(mention_text, [])
+                for entie_json in entie_s:
+                    subject_id = entie_json["subject_id"]
+                    if subject_id not in contain_set:
+                        contain_set.add(subject_id)
+                        if subject_id in key_mention_ids:
+                            mention_data_set.append({
+                                "kb_id": subject_id,
+                                "mention": mention_text,
+                                "offset": mention_offset,
+                                "label": "1"
+                            })
+                        else:
+                            mention_data_set.append({
+                                "kb_id": subject_id,
+                                "mention": mention_text,
+                                "offset": mention_offset,
+                                "label": "0"
+                            })
+            # else:
+                # if len(mention_text) > 3:
+                #     subject_id = subject_index.retrivl(mention_text)[0]
+                #     if subject_id in key_mention_ids:
+                #         mention_data_set.append({
+                #             "kb_id": subject_id,
+                #             "mention": mention_text,
+                #             "offset": mention_offset,
+                #             "label": "1"
+                #         })
+                #     else:
+                #         mention_data_set.append({
+                #             "kb_id": subject_id,
+                #             "mention": mention_text,
+                #             "offset": mention_offset,
+                #             "label": "0"
+                #         })
+
+    def pre_one(self, json_line):
+        mention_data = []
+        text = json_line["text"]
+        key_mention_ids = [m["kb_id"] for m in json_line["mention_data"]]
+
+        contain_set = set()
+
+        # jieba_result = jieba.tokenize(text, mode="default", HMM=False)
+        jieba_result = jieba.tokenize(text, mode="search", HMM=False)
+        self._save_tk_result_tf(jieba_result, mention_data, key_mention_ids, contain_set)
+
+        reg_result = self.dsc_token(text)
+        self._save_tk_result_tf(reg_result, mention_data, key_mention_ids, contain_set)
+
+        reg_result = self.eng_token(text)
+        self._save_tk_result_tf(reg_result, mention_data, key_mention_ids, contain_set)
+
+        json_line["mention_data"] = list(mention_data)
+        return json_line
+
+    def predict(self, json_lines):
+        return list(map(self.pre_one, json_lines))
 
 
 class ClfDiscriminater(Discriminater):
@@ -295,30 +291,27 @@ def step2():
     cd = ClfDiscriminater(model_dir)
     cd.predict_devs(dev_path, result_path)
 
-    eval_pre_id(key_path, result_path)
+    eval_file(key_path, result_path)
 
 
 def step1():
-    dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/develop.json"
-    # result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/validate.json.ngram.pre.json"
-    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/develop.json.jieba.pre.json"
+    dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
+    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ngram.pre.json"
 
     """jieba"""
-    crfer = CutPredicter()
-    """jieba语料"""
-    # crfer = CutPredicterBuildDataSet()
+    # crfer = CutPredicter()
 
     """ngram"""
-    # crfer = NgramPredicter()
+    crfer = NgramPredicter()
     crfer.predict_devs(dev_path, result_path)
 
     # eval_pre_text(dev_path, result_path)
-    eval_pre_id(dev_path, result_path)
+    eval_file(dev_path, result_path)
 
 
 def main():
-    # step1()
-    step2()
+    step1()
+    # step2()
 
 
 if __name__ == '__main__':
