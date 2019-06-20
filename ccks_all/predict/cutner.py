@@ -9,9 +9,10 @@ import numpy as np
 from tqdm import tqdm
 
 from ccks_all.eval import eval_file
+from ccks_all.modeling.datas import get_data_all_text
 from ccks_all.predict.predict import Discriminater, Predicter
 
-from ccks_all.static import subject_dict, subject_index
+from ccks_all.static import subject_dict, subject_index, id2entity
 
 
 class NgramPredicter(Predicter):
@@ -210,7 +211,7 @@ class ClfDiscriminater(Discriminater):
 
         toka_path = model_dir.format(r"\toka.bin")
         toka2_path = model_dir.format(r"\type_toka.bin")
-        model_path = model_dir.format(r"bilstm_model.hdf5")
+        model_path = model_dir.format(r"best_model.hdf5")
 
         self.entity_dict = entity_dict
         self.tk = pickle.load(open(toka_path, 'rb'))
@@ -281,14 +282,86 @@ class ClfDiscriminater(Discriminater):
         return [self.filt_json_line(line, 256) for line in tqdm(json_lines)]
 
 
+class NoneTypeClfDiscriminater(Discriminater):
+
+    def __init__(self, model_dir):
+        toka_path = model_dir.format(r"\toka.bin")
+        model_path = model_dir.format(r"best_model.hdf5")
+
+        self.tk = pickle.load(open(toka_path, 'rb'))
+        self.model = load_model(model_path)
+
+    @staticmethod
+    def extract_entity_text(entity_json_line: dict) -> str:
+        """
+        得到 entity 描述文本
+        :param entity_json_line:
+        :return:
+        """
+        all_str = ""
+        all_str += "。".join(entity_json_line["alias"])
+        datas = entity_json_line["data"]
+        for data in datas:
+            all_str += "。".join(data.values())
+        all_str = all_str.replace("摘要", "。")
+        return all_str
+
+    def filt_json_line(self, tdata, batchsize):
+
+        # X_query_text_pad, X_doc_text_pad, y_ohe = get_data_all_text("test", self.tk, 10000)
+
+        max_len_q = 50
+        max_len_d = 500
+        X_query = []
+        X_doc = []
+        X_type = []
+
+        # tdata = json.loads(json_line)
+        query_text = " ".join(jieba.cut(tdata["text"])).strip()
+
+        mention_data = tdata["mention_data"]
+        mention_data_dic = {mention["kb_id"]: mention for mention in mention_data}
+        mention_ind_dic = {}
+        for i, kb_id in enumerate(mention_data_dic.keys()):
+            mention_ind_dic[i] = kb_id
+            entity_data = id2entity[kb_id]
+            types = entity_data["type"]
+            doc_text = self.extract_entity_text(entity_data)
+
+            X_query.append(query_text)
+            X_doc.append(doc_text)
+            X_type.append(types)
+
+        query_text_tokenized = self.tk.texts_to_sequences(X_query)
+        X_query_text_pad = pad_sequences(query_text_tokenized, maxlen=max_len_q)
+        doc_text_tokenized = self.tk.texts_to_sequences(X_doc)
+        X_doc_pad = pad_sequences(doc_text_tokenized, maxlen=max_len_d)
+
+        pred = self.model.predict([X_query_text_pad, X_doc_pad], batch_size=batchsize)
+
+        predictions = np.round(np.argmax(pred, axis=1)).astype(int)
+
+        mention_data_n = []
+        for i, pre in enumerate(predictions):
+            if pre == 1:
+                mention_data_n.append(mention_data_dic[mention_ind_dic[i]])
+        tdata["mention_data"] = mention_data_n
+        return tdata
+
+    def predict(self, json_lines):
+        # return list(map(self.filt_json_line, json_lines))
+        return [self.filt_json_line(line, 256) for line in tqdm(json_lines)]
+
+
 def step2():
     dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.pre.json"
     key_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
     result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.pre.filter.json"
 
-    model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m11\{}"
+    # model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m11\{}"
+    model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m18\{}"
 
-    cd = ClfDiscriminater(model_dir)
+    cd = NoneTypeClfDiscriminater(model_dir)
     cd.predict_devs(dev_path, result_path)
 
     eval_file(key_path, result_path)
@@ -310,8 +383,8 @@ def step1():
 
 
 def main():
-    step1()
-    # step2()
+    # step1()
+    step2()
 
 
 if __name__ == '__main__':
