@@ -11,7 +11,6 @@ from matchzoo.models import ConvKNRM
 from tqdm import tqdm
 
 from ccks_all.cut_text import all_text_dic, kb_all_text_dic
-from ccks_all.modeling.pair.pair_model import Metrics
 
 root_dir = r"D:\data\biendata\ccks2019_el\ccks_train_data\{}"
 
@@ -37,7 +36,7 @@ def load_data(data_type, line_nub=-1):
         mention_data = tdata["mention_data"]
         for mention in mention_data:
 
-            kb_id_subject = text_id + mention["mention"]
+            text_id_subject = text_id + mention["mention"]
             kb_id = mention["kb_id"]
             doc_text = kb_all_text_dic[kb_id]
 
@@ -53,8 +52,8 @@ def load_data(data_type, line_nub=-1):
 
                 X_left.append(query_text)
                 X_right.append(doc_text)
-                X_left_id.append(text_id)
-                X_right_id.append(kb_id_subject)
+                X_left_id.append(text_id_subject)
+                X_right_id.append(kb_id)
                 y.append(y_label)
 
         else:
@@ -187,11 +186,11 @@ train_generator = mz.DataGenerator(
 print('num batches:', len(train_generator))
 
 model_path = r"D:/data/biendata/ccks2019_el/entityrank/m1/model/"
-early_stop = EarlyStopping(monitor=mz.metrics.NormalizedDiscountedCumulativeGain(k=1), mode="max", patience=3)
-check_point = ModelCheckpoint(model_path + "best_model.h5",
-                              monitor=mz.metrics.NormalizedDiscountedCumulativeGain(k=1),
-                              verbose=1, save_best_only=True, mode="min")
-history = model.fit_generator(train_generator, epochs=100, callbacks=[evaluate, early_stop, check_point])
+early_stop = EarlyStopping(monitor=mz.metrics.NormalizedDiscountedCumulativeGain(k=1), mode="max", patience=1)
+# check_point = ModelCheckpoint(model_path + "best_model.h5",
+#                               monitor=mz.metrics.NormalizedDiscountedCumulativeGain(k=1),
+#                               verbose=1, save_best_only=True, mode="min")
+history = model.fit_generator(train_generator, epochs=100, callbacks=[evaluate, early_stop])
 
 
 model.save(model_path)

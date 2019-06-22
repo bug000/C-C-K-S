@@ -10,9 +10,6 @@ from matchzoo import Embedding, load_model
 from tqdm import tqdm
 
 from ccks_all.cut_text import all_text_dic, kb_all_text_dic
-from ccks_all.modeling.pair.pair_model import Metrics
-
-root_dir = r"D:\data\biendata\ccks2019_el\ccks_train_data\{}"
 
 
 def load_data(data_type, line_nub=-1):
@@ -36,7 +33,7 @@ def load_data(data_type, line_nub=-1):
         mention_data = tdata["mention_data"]
         for mention in mention_data:
 
-            kb_id_subject = text_id + mention["mention"]
+            text_id_subject = text_id + mention["mention"]
             kb_id = mention["kb_id"]
             doc_text = kb_all_text_dic[kb_id]
 
@@ -52,8 +49,8 @@ def load_data(data_type, line_nub=-1):
 
                 X_left.append(query_text)
                 X_right.append(doc_text)
-                X_left_id.append(text_id)
-                X_right_id.append(kb_id_subject)
+                X_left_id.append(text_id_subject)
+                X_right_id.append(kb_id)
                 y.append(y_label)
 
         else:
@@ -69,6 +66,8 @@ def load_data(data_type, line_nub=-1):
     })
     return mz.pack(df)
 
+
+root_dir = r"D:\data\biendata\ccks2019_el\ccks_train_data\{}"
 
 print('data loading ...')
 # train_pack_raw = load_data('train', 100000)
