@@ -34,8 +34,8 @@ def eval_dset(key_mention_ids, result_mention_ids):
         key_mention = set(key_mention)
 
         for k_m in key_mention:
-            # if k_m in subject_dict.keys():
-                if k_m not in result_mention:
+            if k_m not in subject_dict.keys():
+                # if k_m not in result_mention:
                     print(k_m)
 
         mention_intersection = list(result_mention.intersection(key_mention))

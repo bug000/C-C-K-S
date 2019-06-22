@@ -1,7 +1,7 @@
 import csv
 import json
 
-import dill
+import dill as dill
 import pandas as pd
 
 import matchzoo as mz

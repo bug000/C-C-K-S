@@ -119,8 +119,8 @@ def append_params_to_readme(model):
 
 print('data loading ...')
 train_pack_raw = load_data('train', -1)
-dev_pack_raw = load_data('validate', 50000)
-test_pack_raw = load_data('test', 50000)
+dev_pack_raw = load_data('validate', 100000)
+test_pack_raw = load_data('test', 100000)
 
 
 ranking_task = mz.tasks.Ranking(loss=mz.losses.RankHingeLoss())
@@ -194,7 +194,7 @@ check_point = ModelCheckpoint(model_path + "best_model.h5",
 history = model.fit_generator(train_generator, epochs=100, callbacks=[evaluate, early_stop, check_point])
 
 
-# model.save(model_path)
+model.save(model_path)
 dill.dump(preprocessor,  open(model_path + "preprocessor.dill", mode='wb'))
 
 append_params_to_readme(model)

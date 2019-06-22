@@ -8,8 +8,8 @@ from keras_preprocessing.sequence import pad_sequences
 import numpy as np
 from tqdm import tqdm
 
+from ccks_all.cut_text import kb_all_text_dic
 from ccks_all.eval import eval_file
-from ccks_all.modeling.datas import get_data_all_text
 from ccks_all.predict.predict import Discriminater, Predicter
 
 from ccks_all.static import subject_dict, subject_index, id2entity
@@ -140,6 +140,7 @@ class CutPredicter(Predicter):
                 entie_s = self.subject_dic.get(mention_text, [])
                 for entie_json in entie_s:
                     subject_id = entie_json["subject_id"]
+
                     if subject_id not in contain_set:
                         contain_set.add(subject_id)
                         if subject_id in key_mention_ids:
@@ -157,22 +158,22 @@ class CutPredicter(Predicter):
                                 "label": "0"
                             })
             # else:
-                # if len(mention_text) > 3:
-                #     subject_id = subject_index.retrivl(mention_text)[0]
-                #     if subject_id in key_mention_ids:
-                #         mention_data_set.append({
-                #             "kb_id": subject_id,
-                #             "mention": mention_text,
-                #             "offset": mention_offset,
-                #             "label": "1"
-                #         })
-                #     else:
-                #         mention_data_set.append({
-                #             "kb_id": subject_id,
-                #             "mention": mention_text,
-                #             "offset": mention_offset,
-                #             "label": "0"
-                #         })
+            # if len(mention_text) > 3:
+            #     subject_id = subject_index.retrivl(mention_text)[0]
+            #     if subject_id in key_mention_ids:
+            #         mention_data_set.append({
+            #             "kb_id": subject_id,
+            #             "mention": mention_text,
+            #             "offset": mention_offset,
+            #             "label": "1"
+            #         })
+            #     else:
+            #         mention_data_set.append({
+            #             "kb_id": subject_id,
+            #             "mention": mention_text,
+            #             "offset": mention_offset,
+            #             "label": "0"
+            #         })
 
     def pre_one(self, json_line):
         mention_data = []
@@ -310,8 +311,8 @@ class NoneTypeClfDiscriminater(Discriminater):
 
         # X_query_text_pad, X_doc_text_pad, y_ohe = get_data_all_text("test", self.tk, 10000)
 
-        max_len_q = 50
-        max_len_d = 500
+        max_len_q = 20
+        max_len_d = 200
         X_query = []
         X_doc = []
         X_type = []
@@ -320,32 +321,35 @@ class NoneTypeClfDiscriminater(Discriminater):
         query_text = " ".join(jieba.cut(tdata["text"])).strip()
 
         mention_data = tdata["mention_data"]
-        mention_data_dic = {mention["kb_id"]: mention for mention in mention_data}
-        mention_ind_dic = {}
-        for i, kb_id in enumerate(mention_data_dic.keys()):
-            mention_ind_dic[i] = kb_id
-            entity_data = id2entity[kb_id]
-            types = entity_data["type"]
-            doc_text = self.extract_entity_text(entity_data)
+        if len(mention_data) >= 5:
+            mention_data_dic = {mention["kb_id"]: mention for mention in mention_data}
+            mention_ind_dic = {}
+            for i, kb_id in enumerate(mention_data_dic.keys()):
+                mention_ind_dic[i] = kb_id
+                entity_data = id2entity[kb_id]
+                types = entity_data["type"]
+                # doc_text = self.extract_entity_text(entity_data)
+                doc_text = kb_all_text_dic[kb_id]
 
-            X_query.append(query_text)
-            X_doc.append(doc_text)
-            X_type.append(types)
+                X_query.append(query_text)
+                X_doc.append(doc_text)
+                X_type.append(types)
 
-        query_text_tokenized = self.tk.texts_to_sequences(X_query)
-        X_query_text_pad = pad_sequences(query_text_tokenized, maxlen=max_len_q)
-        doc_text_tokenized = self.tk.texts_to_sequences(X_doc)
-        X_doc_pad = pad_sequences(doc_text_tokenized, maxlen=max_len_d)
+            query_text_tokenized = self.tk.texts_to_sequences(X_query)
+            X_query_text_pad = pad_sequences(query_text_tokenized, maxlen=max_len_q)
+            doc_text_tokenized = self.tk.texts_to_sequences(X_doc)
+            X_doc_pad = pad_sequences(doc_text_tokenized, maxlen=max_len_d)
 
-        pred = self.model.predict([X_query_text_pad, X_doc_pad], batch_size=batchsize)
+            pred = self.model.predict([X_query_text_pad, X_doc_pad], batch_size=batchsize)
 
-        predictions = np.round(np.argmax(pred, axis=1)).astype(int)
+            predictions = np.round(np.argmax(pred, axis=1)).astype(int)
 
-        mention_data_n = []
-        for i, pre in enumerate(predictions):
-            if pre == 1:
-                mention_data_n.append(mention_data_dic[mention_ind_dic[i]])
-        tdata["mention_data"] = mention_data_n
+            mention_data_n = []
+            for i, pre in enumerate(predictions):
+                if pre == 1:
+                    mention_data_n.append(mention_data_dic[mention_ind_dic[i]])
+            tdata["mention_data"] = mention_data_n
+
         return tdata
 
     def predict(self, json_lines):
@@ -354,8 +358,10 @@ class NoneTypeClfDiscriminater(Discriminater):
 
 
 def step2():
-    dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.pre.json"
+    # key_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
     key_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
+
+    dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.pre.json"
     result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.pre.filter.json"
 
     # model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m11\{}"
@@ -369,15 +375,15 @@ def step2():
 
 def step1():
     dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
-    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ngram.pre.json"
+    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.pre.json"
 
     """jieba"""
     # crfer = CutPredicter()
 
     """ngram"""
     crfer = NgramPredicter()
-    crfer.predict_devs(dev_path, result_path)
 
+    # crfer.predict_devs(dev_path, result_path)
     # eval_pre_text(dev_path, result_path)
     eval_file(dev_path, result_path)
 
@@ -389,3 +395,17 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+"""
+ngram
+f:0.040384977029712096
+p:0.020934924269486652
+r:0.9782572577628117
+
+jieba
+f:0.10971752110381326
+p:0.06186784640974652
+r:0.970634415584413
+
+
+"""
