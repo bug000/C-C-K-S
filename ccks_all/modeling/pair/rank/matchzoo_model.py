@@ -13,10 +13,10 @@ from tqdm import tqdm
 from ccks_all.cut_text import all_text_dic, kb_all_text_dic
 
 root_dir = r"D:\data\biendata\ccks2019_el\ccks_train_data\{}"
+model_path = r"D:/data/biendata/ccks2019_el/entityrank/m1/"
 
 
 def load_data(data_type, line_nub=-1):
-
     id_set = set()
 
     X_left = []
@@ -121,7 +121,6 @@ train_pack_raw = load_data('train', -1)
 dev_pack_raw = load_data('validate', 100000)
 test_pack_raw = load_data('test', 100000)
 
-
 ranking_task = mz.tasks.Ranking(loss=mz.losses.RankHingeLoss())
 ranking_task.metrics = [
     mz.metrics.NormalizedDiscountedCumulativeGain(k=1),
@@ -145,10 +144,17 @@ preprocessor = mz.preprocessors.BasicPreprocessor(
     remove_stop_words=False
 )
 
+# preprocessor = dill.load(open(model_path + "preprocessor.dill", mode='rb'))
 train_pack_processed = preprocessor.fit_transform(train_pack_raw)
+# train_pack_processed = preprocessor.transform(train_pack_raw)
 dev_pack_processed = preprocessor.transform(dev_pack_raw)
 test_pack_processed = preprocessor.transform(test_pack_raw)
 
+
+dill.dump(preprocessor, open(model_path + "preprocessor.dill", mode='wb'))
+
+# dill.dump(train_pack_processed, open("train_pack_processed.dill", "wb"))
+# train_pack_processed = dill.load(open("train_pack_processed.dill", "rb"))
 
 # model = mz.models.MVLSTM()
 model = ConvKNRM()
@@ -176,26 +182,27 @@ model.load_embedding_matrix(embedding_matrix)
 test_x, test_y = test_pack_processed.unpack()
 evaluate = mz.callbacks.EvaluateAllMetrics(model, x=test_x, y=test_y, batch_size=len(test_x))
 
-train_generator = mz.DataGenerator(
-    train_pack_processed,
-    mode='pair',
-    num_dup=2,
-    num_neg=1,
-    batch_size=8
-)
-print('num batches:', len(train_generator))
+# train_generator = mz.DataGenerator(
+#     train_pack_processed,
+#     mode='pair',
+#     num_dup=2,
+#     num_neg=1,
+#     batch_size=4
+# )
+X, y = train_pack_processed.unpack()
+# print('num batches:', len(train_generator))
 
-model_path = r"D:/data/biendata/ccks2019_el/entityrank/m1/model/"
+
 early_stop = EarlyStopping(monitor=mz.metrics.NormalizedDiscountedCumulativeGain(k=1), mode="max", patience=1)
 # check_point = ModelCheckpoint(model_path + "best_model.h5",
 #                               monitor=mz.metrics.NormalizedDiscountedCumulativeGain(k=1),
 #                               verbose=1, save_best_only=True, mode="min")
-history = model.fit_generator(train_generator, epochs=100, callbacks=[evaluate, early_stop])
+# history = model.fit_generator(train_generator, epochs=100, callbacks=[evaluate, early_stop], workers=1)
+model.fit(x=X, y=y, batch_size=32, epochs=100, callbacks=[evaluate, early_stop])
 
-
-model.save(model_path)
-dill.dump(preprocessor,  open(model_path + "preprocessor.dill", mode='wb'))
+model.save(model_path+"model")
 
 append_params_to_readme(model)
+
 
 

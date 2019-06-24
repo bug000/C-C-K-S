@@ -1,14 +1,18 @@
 import json
+import pandas as pd
 import pickle
 import re
+from typing import List
 
+import dill
 import jieba
 from keras.engine.saving import load_model
 from keras_preprocessing.sequence import pad_sequences
 import numpy as np
 from tqdm import tqdm
+import matchzoo as mz
 
-from ccks_all.cut_text import kb_all_text_dic
+from ccks_all.cut_text import kb_all_text_dic, all_text_dic
 from ccks_all.eval import eval_file
 from ccks_all.predict.predict import Discriminater, Predicter
 
@@ -357,17 +361,110 @@ class NoneTypeClfDiscriminater(Discriminater):
         return [self.filt_json_line(line, 256) for line in tqdm(json_lines)]
 
 
+class RankPredicter(Discriminater):
+
+    def __init__(self, model_path):
+
+        preprocess_path = model_path + "preprocessor.dill"
+        self.model = load_model(model_path+"model")
+        self.preprocessor = dill.load(open(preprocess_path, "rb"))
+
+    def filt_json_line(self, tdata):
+
+        id_set = set()
+
+        X_left = []
+        X_left_id = []
+        X_right = []
+        X_right_id = []
+
+        y = []
+
+        text_id = tdata["text_id"]
+        query_text = all_text_dic[text_id]
+        mention_data = tdata["mention_data"]
+        # id : mention
+        mention_data_dic = {mention["kb_id"]: mention for mention in mention_data}
+        for mention in mention_data:
+
+            text_id_subject = text_id + mention["mention"]
+            kb_id = mention["kb_id"]
+            doc_text = kb_all_text_dic[kb_id]
+
+            # y_label = int(mention["label"])
+            y_label = -1
+
+            pid = text_id + "_" + kb_id
+
+            if pid not in id_set:
+                id_set.add(pid)
+
+                X_left.append(query_text)
+                X_right.append(doc_text)
+                X_left_id.append(text_id_subject)
+                X_right_id.append(kb_id)
+                y.append(y_label)
+
+        df = pd.DataFrame({
+            'text_left': X_left,
+            'text_right': X_right,
+            'id_left': X_left_id,
+            'id_right': X_right_id,
+            'label': y
+        })
+        pack_raw = mz.pack(df)
+        pack_processed = self.preprocessor.transform(pack_raw)
+
+        X, y = pack_processed.unpack()
+
+        pred = self.model.predict(X, batch_size=256)
+
+        id_left = X["id_left"]
+        id_right = X["id_right"]
+        predictions = np.round(np.argmax(pred, axis=1)).astype(int)
+
+        mention_data_n = []
+
+        id_left_index_dic = {}
+        for i, id_left_ in id_left:
+            if id_left_ not in id_left:
+                id_left_index_dic[id_left_] = [i]
+            else:
+                id_left_index_dic[id_left_].append(i)
+
+        for id_left_indexs in id_left_index_dic.values():
+            # id_right_s = [id_right[i] for i in id_left_indexs]
+            # predictions_s = [predictions[i] for i in id_left_indexs]
+            id_right_pre_dic = {}
+            for i in id_left_indexs:
+                id_right_ = id_right[i]
+                predictions_ = predictions[i]
+                id_right_pre_dic[id_right_] = predictions_
+            sort_id_right_pre_dic = sorted(id_right_pre_dic.items(), key=lambda item: item[1])
+            entity_id = sort_id_right_pre_dic[0][0]
+
+            mention_data_n.append(mention_data_dic[entity_id])
+
+        tdata["mention_data"] = mention_data_n
+
+        return tdata
+
+    def predict(self, json_lines: List) -> List:
+        return [self.filt_json_line(line) for line in tqdm(json_lines)]
+
+
 def step2():
     # key_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
     key_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
 
     dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.pre.json"
-    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.pre.filter.json"
+    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.rank.filter.json"
 
     # model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m11\{}"
-    model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m18\{}"
-
-    cd = NoneTypeClfDiscriminater(model_dir)
+    # model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m18\{}"
+    model_dir = r"D:/data/biendata/ccks2019_el/entityrank/m0/"
+    # cd = NoneTypeClfDiscriminater(model_dir)
+    cd = RankPredicter(model_dir)
     cd.predict_devs(dev_path, result_path)
 
     eval_file(key_path, result_path)
