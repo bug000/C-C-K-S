@@ -420,10 +420,10 @@ class RankPredicter(Discriminater):
         X, y = pack_processed.unpack()
 
         pred = self.model.predict(X, batch_size=self.batch_size)
+        predictions = np.squeeze(pred)
 
         id_left = X["id_left"]
         id_right = X["id_right"]
-        predictions = np.round(np.argmax(pred, axis=1)).astype(int)
 
         mention_data_n = []
 
