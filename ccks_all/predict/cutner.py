@@ -366,7 +366,7 @@ class RankPredicter(Discriminater):
     def __init__(self, model_path):
 
         preprocess_path = model_path + "preprocessor.dill"
-        self.model = load_model(model_path+"model")
+        self.model = mz.load_model(model_path+"model")
         self.preprocessor = dill.load(open(preprocess_path, "rb"))
 
     def filt_json_line(self, tdata):
