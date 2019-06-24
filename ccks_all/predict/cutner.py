@@ -420,7 +420,7 @@ class RankPredicter(Discriminater):
         X, y = pack_processed.unpack()
 
         pred = self.model.predict(X, batch_size=self.batch_size)
-        predictions = np.squeeze(pred)
+        predictions = np.squeeze(pred, axis=1)
 
         id_left = X["id_left"]
         id_right = X["id_right"]
@@ -466,7 +466,7 @@ def step2():
     # model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m18\{}"
     model_dir = r"D:/data/biendata/ccks2019_el/entityrank/m0/"
     # cd = NoneTypeClfDiscriminater(model_dir)
-    cd = RankPredicter(model_dir, batch_size=8)
+    cd = RankPredicter(model_dir, batch_size=1)
     cd.predict_devs(dev_path, result_path)
 
     eval_file(key_path, result_path)
