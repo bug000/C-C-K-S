@@ -363,11 +363,12 @@ class NoneTypeClfDiscriminater(Discriminater):
 
 class RankPredicter(Discriminater):
 
-    def __init__(self, model_path):
+    def __init__(self, model_path, batch_size=8):
 
         preprocess_path = model_path + "preprocessor.dill"
         self.model = mz.load_model(model_path+"model")
         self.preprocessor = dill.load(open(preprocess_path, "rb"))
+        self.batch_size = batch_size
 
     def filt_json_line(self, tdata):
 
@@ -391,8 +392,9 @@ class RankPredicter(Discriminater):
             kb_id = mention["kb_id"]
             doc_text = kb_all_text_dic[kb_id]
 
-            # y_label = int(mention["label"])
             y_label = -1
+            if "label" in mention.keys():
+                y_label = int(mention["label"])
 
             pid = text_id + "_" + kb_id
 
@@ -413,11 +415,11 @@ class RankPredicter(Discriminater):
             'label': y
         })
         pack_raw = mz.pack(df)
-        pack_processed = self.preprocessor.transform(pack_raw)
+        pack_processed = self.preprocessor.transform(pack_raw, verbose=0)
 
         X, y = pack_processed.unpack()
 
-        pred = self.model.predict(X, batch_size=256)
+        pred = self.model.predict(X, batch_size=self.batch_size)
 
         id_left = X["id_left"]
         id_right = X["id_right"]
@@ -426,8 +428,8 @@ class RankPredicter(Discriminater):
         mention_data_n = []
 
         id_left_index_dic = {}
-        for i, id_left_ in id_left:
-            if id_left_ not in id_left:
+        for i, id_left_ in enumerate(id_left):
+            if id_left_ not in id_left_index_dic.keys():
                 id_left_index_dic[id_left_] = [i]
             else:
                 id_left_index_dic[id_left_].append(i)
@@ -464,7 +466,7 @@ def step2():
     # model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m18\{}"
     model_dir = r"D:/data/biendata/ccks2019_el/entityrank/m0/"
     # cd = NoneTypeClfDiscriminater(model_dir)
-    cd = RankPredicter(model_dir)
+    cd = RankPredicter(model_dir, batch_size=8)
     cd.predict_devs(dev_path, result_path)
 
     eval_file(key_path, result_path)
