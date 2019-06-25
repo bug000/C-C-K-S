@@ -14,7 +14,7 @@ import matchzoo as mz
 
 from ccks_all.cut_text import kb_all_text_dic, all_text_dic
 from ccks_all.eval import eval_file
-from ccks_all.predict.predict import Discriminater, Predicter
+from ccks_all.predict.predict import Discriminater, Predicter, BiLSTMCRFPredicter
 
 from ccks_all.static import subject_dict, subject_index, id2entity
 
@@ -346,7 +346,8 @@ class NoneTypeClfDiscriminater(Discriminater):
 
             pred = self.model.predict([X_query_text_pad, X_doc_pad], batch_size=batchsize)
 
-            predictions = np.round(np.argmax(pred, axis=1)).astype(int)
+            # predictions = np.round(np.argmax(pred, axis=1)).astype(int)
+            predictions = [1 if pre[0] < 0.6 else 0 for pre in pred]
 
             mention_data_n = []
             for i, pre in enumerate(predictions):
@@ -384,6 +385,10 @@ class RankPredicter(Discriminater):
         text_id = tdata["text_id"]
         query_text = all_text_dic[text_id]
         mention_data = tdata["mention_data"]
+
+        if len(mention_data) == 0:
+            return tdata
+
         # id : mention
         mention_data_dic = {mention["kb_id"]: mention for mention in mention_data}
         for mention in mention_data:
@@ -442,7 +447,7 @@ class RankPredicter(Discriminater):
                 id_right_ = id_right[i]
                 predictions_ = predictions[i]
                 id_right_pre_dic[id_right_] = predictions_
-            sort_id_right_pre_dic = sorted(id_right_pre_dic.items(), key=lambda item: item[1])
+            sort_id_right_pre_dic = sorted(id_right_pre_dic.items(), key=lambda item: item[1], reverse=True)
             entity_id = sort_id_right_pre_dic[0][0]
 
             mention_data_n.append(mention_data_dic[entity_id])
@@ -459,14 +464,19 @@ def step2():
     # key_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
     key_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
 
-    dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.pre.json"
-    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.rank.filter.json"
+    # dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre.json"
+    # dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.rank.filter.json"
+    dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.rank.filter.json"
+    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.rank.pre.filter.json"
+
+    # result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.rank.pre.filter0.6.json"
 
     # model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m11\{}"
-    # model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m18\{}"
-    model_dir = r"D:/data/biendata/ccks2019_el/entityrank/m0/"
-    # cd = NoneTypeClfDiscriminater(model_dir)
-    cd = RankPredicter(model_dir, batch_size=1)
+
+    model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m18\{}"
+    cd = NoneTypeClfDiscriminater(model_dir)
+    # model_dir = r"D:/data/biendata/ccks2019_el/entityrank/m2/"
+    # cd = RankPredicter(model_dir, batch_size=64)
     cd.predict_devs(dev_path, result_path)
 
     eval_file(key_path, result_path)
@@ -474,13 +484,17 @@ def step2():
 
 def step1():
     dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
-    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.pre.json"
+    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre.json"
+
+    """crf"""
+    # crf_model_path = r"D:\data\biendata\ccks2019_el\ner\m0"
+    # crfer = BiLSTMCRFPredicter(crf_model_path)
 
     """jieba"""
     # crfer = CutPredicter()
 
     """ngram"""
-    crfer = NgramPredicter()
+    # crfer = NgramPredicter()
 
     # crfer.predict_devs(dev_path, result_path)
     # eval_pre_text(dev_path, result_path)
@@ -488,8 +502,8 @@ def step1():
 
 
 def main():
-    # step1()
-    step2()
+    step1()
+    # step2()
 
 
 if __name__ == '__main__':
@@ -506,5 +520,11 @@ f:0.10971752110381326
 p:0.06186784640974652
 r:0.970634415584413
 
+
+
+rank m1
+f:0.3943349753720331
+p:0.27639664648249085
+r:0.8648834936668199
 
 """
