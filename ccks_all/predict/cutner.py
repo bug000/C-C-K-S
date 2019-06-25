@@ -485,7 +485,7 @@ def step2():
 
 def step1():
     dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
-    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre.json"
+    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre2.json"
 
     """crf"""
     crf_model_path = r"D:\data\biendata\ccks2019_el\ner\m0.0"
@@ -503,8 +503,8 @@ def step1():
 
 
 def main():
-    # step1()
-    step2()
+    step1()
+    # step2()
 
 
 if __name__ == '__main__':

@@ -30,12 +30,12 @@ def load_entiy():
         """alias"""
         for sub_alias in knobj["alias"]:
             if sub_alias in subject_id_dict.keys():
-                if subject_id not in subject_id_dict[subject]:
+                if subject_id not in subject_id_dict[sub_alias]:
                     subject_id_dict[sub_alias].append(subject_id)
-                    subject_dict[subject] = [knobj]
+                    subject_dict[sub_alias].append(knobj)
             else:
                 subject_id_dict[sub_alias] = [subject_id]
-                subject_dict[subject] = [knobj]
+                subject_dict[sub_alias] = [knobj]
     return id2entity, subject_dict, subject_id_dict
 
 
