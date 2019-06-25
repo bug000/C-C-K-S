@@ -289,12 +289,13 @@ class ClfDiscriminater(Discriminater):
 
 class NoneTypeClfDiscriminater(Discriminater):
 
-    def __init__(self, model_dir):
+    def __init__(self, model_dir, batch=128):
         toka_path = model_dir.format(r"\toka.bin")
         model_path = model_dir.format(r"best_model.hdf5")
 
         self.tk = pickle.load(open(toka_path, 'rb'))
         self.model = load_model(model_path)
+        self.batch = batch
 
     @staticmethod
     def extract_entity_text(entity_json_line: dict) -> str:
@@ -359,7 +360,7 @@ class NoneTypeClfDiscriminater(Discriminater):
 
     def predict(self, json_lines):
         # return list(map(self.filt_json_line, json_lines))
-        return [self.filt_json_line(line, 256) for line in tqdm(json_lines)]
+        return [self.filt_json_line(line, self.batch) for line in tqdm(json_lines)]
 
 
 class RankPredicter(Discriminater):
@@ -464,19 +465,19 @@ def step2():
     # key_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
     key_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
 
-    # dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre.json"
+    dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre.json"
     # dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.rank.filter.json"
-    dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.rank.filter.json"
-    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.rank.pre.filter.json"
+    # dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.rank.filter.json"
+    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre.rank.json"
 
     # result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.rank.pre.filter0.6.json"
 
     # model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m11\{}"
 
-    model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m18\{}"
-    cd = NoneTypeClfDiscriminater(model_dir)
-    # model_dir = r"D:/data/biendata/ccks2019_el/entityrank/m2/"
-    # cd = RankPredicter(model_dir, batch_size=64)
+    # model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m18\{}"
+    # cd = NoneTypeClfDiscriminater(model_dir, batch=256)
+    model_dir = r"D:/data/biendata/ccks2019_el/entityrank/m2/"
+    cd = RankPredicter(model_dir, batch_size=256)
     cd.predict_devs(dev_path, result_path)
 
     eval_file(key_path, result_path)
@@ -487,8 +488,8 @@ def step1():
     result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre.json"
 
     """crf"""
-    # crf_model_path = r"D:\data\biendata\ccks2019_el\ner\m0"
-    # crfer = BiLSTMCRFPredicter(crf_model_path)
+    crf_model_path = r"D:\data\biendata\ccks2019_el\ner\m0.0"
+    crfer = BiLSTMCRFPredicter(crf_model_path, type_filter=False)
 
     """jieba"""
     # crfer = CutPredicter()
@@ -496,14 +497,14 @@ def step1():
     """ngram"""
     # crfer = NgramPredicter()
 
-    # crfer.predict_devs(dev_path, result_path)
+    crfer.predict_devs(dev_path, result_path)
     # eval_pre_text(dev_path, result_path)
     eval_file(dev_path, result_path)
 
 
 def main():
-    step1()
-    # step2()
+    # step1()
+    step2()
 
 
 if __name__ == '__main__':
@@ -522,9 +523,25 @@ r:0.970634415584413
 
 
 
-rank m1
-f:0.3943349753720331
-p:0.27639664648249085
-r:0.8648834936668199
+ner_tpf text
+f:0.8268713155157437
+p:0.9438671957671914
+r:0.7967485222596271
+
+ner_tpf id
+f:0.6958460835460863
+p:0.7975011463844766
+r:0.6726364411308885
+
+
+ner text
+f:0.8464500719444991
+p:0.937638095238091
+r:0.8261534605312315
+
+ner id
+f:0.46031319051319
+p:0.5167473544973543
+r:0.453965886376993
 
 """

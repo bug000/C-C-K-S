@@ -5,6 +5,7 @@ from tqdm import tqdm
 
 def load_entiy():
     subject_dict = {}
+    subject_id_dict = {}
     id2entity = {}
     kb_path = "D:/data/biendata/ccks2019_el/ccks_train_data/kb_data"
     kr_reader = tqdm(open(kb_path, 'r', encoding='utf-8').readlines())
@@ -17,25 +18,32 @@ def load_entiy():
 
         """subject"""
         subject = knobj["subject"]
-        if subject in subject_dict.keys():
-            subject_dict[subject].append(knobj)
+        subject_id = knobj["subject_id"]
+        if subject in subject_id_dict.keys():
+            if subject_id not in subject_id_dict[subject]:
+                subject_id_dict[subject].append(subject_id)
+                subject_dict[subject].append(knobj)
         else:
+            subject_id_dict[subject] = [subject_id]
             subject_dict[subject] = [knobj]
 
         """alias"""
         for sub_alias in knobj["alias"]:
-            if sub_alias in subject_dict.keys():
-                subject_dict[sub_alias].append(knobj)
+            if sub_alias in subject_id_dict.keys():
+                if subject_id not in subject_id_dict[subject]:
+                    subject_id_dict[sub_alias].append(subject_id)
+                    subject_dict[subject] = [knobj]
             else:
-                subject_dict[sub_alias] = [knobj]
-    return id2entity, subject_dict
+                subject_id_dict[sub_alias] = [subject_id]
+                subject_dict[subject] = [knobj]
+    return id2entity, subject_dict, subject_id_dict
 
 
 """
 id:obj
 text:obj
 """
-id2entity, subject_dict = load_entiy()
+id2entity, subject_dict, subject_id_dict = load_entiy()
 
 
 class SubjectIndex(object):

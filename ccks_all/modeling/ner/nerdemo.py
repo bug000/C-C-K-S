@@ -107,4 +107,81 @@ scientificorganization     0.8039    0.7321    0.7664        56
              micro avg     0.8317    0.7917    0.8112     38457
              macro avg     0.8313    0.7917    0.8091     38457
 
+
+
+ep40
+                        precision    recall  f1-score   support
+
+                 movie     0.9283    0.9510    0.9395      1674
+   entertainmentperson     0.9319    0.9568    0.9442      2247
+                 thing     0.8970    0.8656    0.8811      5746
+          creativework     0.8807    0.9248    0.9022      3472
+   communicationmedium     0.9177    0.9245    0.9211       941
+        fictionalhuman     0.9396    0.8941    0.9163       661
+            vocabulary     0.8961    0.9065    0.9012     15190
+                symbol     0.0000    0.0000    0.0000         3
+                  game     0.9476    0.9365    0.9420       425
+                tvplay     0.9009    0.9762    0.9370      1974
+                  tool     0.9043    0.9286    0.9163       112
+                 human     0.8973    0.8809    0.8890      1805
+                tvshow     0.9450    0.9777    0.9611       404
+                 place     0.9577    0.9215    0.9393      1402
+               product     0.9203    0.8247    0.8699       154
+          organization     0.8996    0.9065    0.9030       524
+               country     0.8821    0.9497    0.9146       378
+                 event     0.9160    0.9626    0.9387       374
+                 brand     0.9524    0.8889    0.9195        45
+      culturalheritage     1.0000    0.9643    0.9818        84
+              language     0.9583    0.9200    0.9388        75
+                person     0.9524    0.9524    0.9524        21
+      awardeventseries     1.0000    1.0000    1.0000        15
+                 plant     0.9559    0.8904    0.9220        73
+                animal     0.9844    0.9000    0.9403        70
+               athlete     0.8551    0.8939    0.8741        66
+                  food     0.9057    1.0000    0.9505        48
+              organism     1.0000    0.8182    0.9000        11
+      historicalperson     0.8208    1.0000    0.9016        87
+    academicdiscipline     0.8983    1.0000    0.9464        53
+   collegeoruniversity     0.9697    0.8889    0.9275        72
+        fictionalthing     0.9167    0.6471    0.7586        17
+      medicalcondition     0.9286    0.8667    0.8966        15
+scientificorganization     0.8710    0.9643    0.9153        56
+        educationmajor     0.8750    0.9333    0.9032        15
+               dynasty     0.8909    0.9800    0.9333        50
+              material     0.8571    0.9375    0.8955        32
+                nation     0.8889    0.8889    0.8889        18
+              currency     0.8571    0.6667    0.7500         9
+      historicalperiod     0.8333    0.5556    0.6667         9
+            realestate     1.0000    0.7143    0.8333         7
+            familyname     0.5000    0.2000    0.2857         5
+    astronomicalobject     1.0000    0.8000    0.8889        10
+            zodiacsign     1.0000    1.0000    1.0000         2
+       chemicalelement     1.0000    1.0000    1.0000         1
+ medicaldepartmenttype     0.0000    0.0000    0.0000         1
+            curriculum     1.0000    0.6667    0.8000         3
+               theorem     0.0000    0.0000    0.0000         1
+
+             micro avg     0.9038    0.9120    0.9079     38457
+             macro avg     0.9040    0.9120    0.9077     38457
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 """
+
