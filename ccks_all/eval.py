@@ -61,15 +61,20 @@ def eval_dset(key_mention_ids, result_mention_ids):
     print(f"r:{r_mean}")
 
 
-def eval_file(answer_file, result_file):
-    ans_men_texts, ans_men_ids = load_mention_mess(answer_file)
+# def eval_all_match(key_file, result_file):
+
+
+
+
+def eval_file(key_file, result_file):
+    key_men_texts, key_men_ids = load_mention_mess(key_file)
     re_men_texts, re_men_ids = load_mention_mess(result_file)
 
     print("text:")
-    eval_dset(ans_men_texts, re_men_texts)
+    eval_dset(key_men_texts, re_men_texts)
 
     print("id:")
-    eval_dset(ans_men_ids, re_men_ids)
+    eval_dset(key_men_ids, re_men_ids)
 
 
 def main():

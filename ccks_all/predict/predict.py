@@ -32,11 +32,12 @@ class Discriminater(Predicter):
 
 class BiLSTMCRFPredicter(Predicter):
 
-    def __init__(self, model_path, type_filter=False):
+    def __init__(self, model_path, type_filter=False, save_label=False):
         # mention -> entity_json_line
         self.subject_id_dict = subject_id_dict
         self._model = BLSTMCRFModel.load_model(model_path)
         self.type_filter = type_filter
+        self.save_label = save_label
 
     def get_subject_ids(self, mention_text: str, type_predict: str):
         entis_ids = self.subject_id_dict.get(mention_text.strip(), [])
@@ -96,6 +97,8 @@ class BiLSTMCRFPredicter(Predicter):
                                     mention["label"] = "1"
                                 else:
                                     mention["label"] = "0"
+                                if not self.save_label:
+                                    mention.pop("label")
                                 mention_data.append(mention.copy())
 
                             break
@@ -110,6 +113,8 @@ class BiLSTMCRFPredicter(Predicter):
                                     mention["label"] = "1"
                                 else:
                                     mention["label"] = "0"
+                                if not self.save_label:
+                                    mention.pop("label")
                                 mention_data.append(mention.copy())
 
             dev_line["mention_data"] = mention_data

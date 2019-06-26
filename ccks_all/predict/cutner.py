@@ -488,8 +488,8 @@ def step1():
     result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre.json"
 
     """crf"""
-    # crf_model_path = r"D:\data\biendata\ccks2019_el\ner\m0.1"
-    # crfer = BiLSTMCRFPredicter(crf_model_path, type_filter=True)
+    crf_model_path = r"D:\data\biendata\ccks2019_el\ner\m0.1"
+    crfer = BiLSTMCRFPredicter(crf_model_path, type_filter=True, save_label=False)
     # crfer = BiLSTMCRFntPredicter(crf_model_path)
 
     """jieba"""
@@ -498,7 +498,7 @@ def step1():
     """ngram"""
     # crfer = NgramPredicter()
 
-    # crfer.predict_devs(dev_path, result_path)
+    crfer.predict_devs(dev_path, result_path)
     # eval_pre_text(dev_path, result_path)
     eval_file(dev_path, result_path)
 
