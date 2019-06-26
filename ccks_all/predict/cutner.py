@@ -14,7 +14,7 @@ import matchzoo as mz
 
 from ccks_all.cut_text import kb_all_text_dic, all_text_dic
 from ccks_all.eval import eval_file
-from ccks_all.predict.predict import Discriminater, Predicter, BiLSTMCRFPredicter, BiLSTMCRFntPredicter
+from ccks_all.predict.predict import Discriminater, Predicter, BiLSTMCRFPredicter
 
 from ccks_all.static import subject_dict, subject_index, id2entity
 
@@ -489,7 +489,7 @@ def step1():
 
     """crf"""
     crf_model_path = r"D:\data\biendata\ccks2019_el\ner\m0.1"
-    crfer = BiLSTMCRFPredicter(crf_model_path, type_filter=True, save_label=False)
+    crfer = BiLSTMCRFPredicter(crf_model_path, type_filter=True, save_label=False, batch=2)
     # crfer = BiLSTMCRFntPredicter(crf_model_path)
 
     """jieba"""

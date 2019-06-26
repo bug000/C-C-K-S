@@ -32,11 +32,12 @@ class Discriminater(Predicter):
 
 class BiLSTMCRFPredicter(Predicter):
 
-    def __init__(self, model_path, type_filter=False, save_label=False):
+    def __init__(self, model_path, type_filter=False, save_label=False, batch=32):
         # mention -> entity_json_line
         self.subject_id_dict = subject_id_dict
         self._model = BLSTMCRFModel.load_model(model_path)
         self.type_filter = type_filter
+        self.batch = batch
         self.save_label = save_label
 
     def get_subject_ids(self, mention_text: str, type_predict: str):
@@ -123,80 +124,7 @@ class BiLSTMCRFPredicter(Predicter):
         return pre_lines
 
     def predict_text(self, x_pre):
-        return self._model.predict(x_pre, batch_size=1024)
-
-
-class BiLSTMCRFntPredicter(Predicter):
-
-    def __init__(self, model_path):
-        # mention -> entity_json_line
-        self.subject_id_dict = subject_id_dict
-        self._model = BLSTMCRFModel.load_model(model_path)
-
-    def get_subject_ids(self, mention_text: str):
-        entisids = self.subject_id_dict.get(mention_text.strip(), [])
-        for entit_id in entisids:
-            entit = id2entity[entit_id]
-            yield entit["subject_id"]
-
-    def predict(self, json_lines):
-        BEGIN = "B"
-        MIDD = "M"
-        END = "E"
-        SINGLE = "S"
-        NONE = "O"
-
-        pre_lines = []
-
-        pre_texts = [list(json_line["text"]) for json_line in json_lines]
-
-        pre_seq_s = self.predict_text(pre_texts)
-
-        for data_ind, pre_seq in enumerate(tqdm(pre_seq_s)):
-            dev_line = json_lines[data_ind]
-            dev_text = pre_texts[data_ind]
-
-            mention_data = []
-            for token_id, entity_mark in enumerate(pre_seq):
-                # 序列开始标志
-                if entity_mark.startswith(BEGIN) or entity_mark.startswith(SINGLE):
-                    # 这种方法提取实体可能有重复现象 ?
-                    mention = {
-                        "kb_id": "",
-                        "mention": "",
-                        "offset": str(token_id),
-                    }
-                    for token_id_i in range(token_id, len(pre_seq)):
-                        # 已经等于最后一个索引了，说明直到最后一个 char 都是 entity str
-                        if pre_seq[token_id_i] is NONE \
-                                or (pre_seq[token_id_i].startswith(BEGIN) and token_id_i != token_id) \
-                                or (pre_seq[token_id_i].startswith(SINGLE) and token_id_i != token_id):
-                            subject_id_s = self.get_subject_ids(mention["mention"])
-                            for subject_id in subject_id_s:
-                                mention["kb_id"] = str(subject_id)
-                                mention_data.append(mention.copy())
-                            break
-                        mention["mention"] += dev_text[token_id_i]
-
-                        if token_id_i == (len(pre_seq) - 1):
-                            subject_id_s = self.get_subject_ids(mention["mention"])
-                            for subject_id in subject_id_s:
-                                mention["kb_id"] = str(subject_id)
-                                mention_data.append(mention.copy())
-
-                            # if token_id_i == (len(pre_seq) - 1):
-                        #     subject_id_s = self.get_subject_ids(mention["mention"])
-                        #     for subject_id in subject_id_s:
-                        #         mention["kb_id"] = str(subject_id)
-                        #         mention_data.append(mention)
-
-            dev_line["mention_data"] = mention_data
-            pre_lines.append(dev_line)
-
-        return pre_lines
-
-    def predict_text(self, x_pre):
-        return self._model.predict(x_pre, batch_size=1024)
+        return self._model.predict(x_pre, batch_size=self.batch)
 
 
 def main():
