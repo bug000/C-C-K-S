@@ -11,7 +11,7 @@ from ccks_all.static import subject_id_dict, id2entity
 
 class Predicter(object):
 
-    def predict(self, json_lines: List) ->List:
+    def predict(self, json_lines: List) -> List:
         raise NotImplementedError
 
     def predict_devs(self, dev_path, result_path):
@@ -41,7 +41,7 @@ class BiLSTMCRFPredicter(Predicter):
     def get_subject_ids(self, mention_text: str, type_predict: str):
         entis_ids = self.subject_id_dict.get(mention_text.strip(), [])
         for entit_id in entis_ids:
-            entit = id2entity(entit_id)
+            entit = id2entity[entit_id]
             etype = str(entit["type"][0]).lower()
             if self.type_filter:
                 if etype == type_predict:
@@ -65,8 +65,10 @@ class BiLSTMCRFPredicter(Predicter):
         for data_ind, pre_seq in enumerate(tqdm(pre_seq_s)):
             dev_line = json_lines[data_ind]
             dev_text = pre_texts[data_ind]
-            key_mention_ids = [m["kb_id"] for m in dev_line["mention_data"]]
-
+            if "mention_data" in dev_line.keys():
+                key_mention_ids = [m["kb_id"] for m in dev_line["mention_data"]]
+            else:
+                key_mention_ids = []
             mention_data = []
             for token_id, entity_mark in enumerate(pre_seq):
                 # 序列开始标志
@@ -127,7 +129,7 @@ class BiLSTMCRFntPredicter(Predicter):
     def get_subject_ids(self, mention_text: str):
         entisids = self.subject_id_dict.get(mention_text.strip(), [])
         for entit_id in entisids:
-            entit = id2entity(entit_id)
+            entit = id2entity[entit_id]
             yield entit["subject_id"]
 
     def predict(self, json_lines):
@@ -193,5 +195,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-

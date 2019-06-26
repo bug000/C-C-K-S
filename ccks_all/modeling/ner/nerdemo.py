@@ -4,16 +4,16 @@ from keras.callbacks import EarlyStopping, TensorBoard
 
 from ccks_ner import dload
 
-train_x, train_y = dload.load_json_data('train')
-validate_x, validate_y = dload.load_json_data('validate')
-test_x, test_y = dload.load_json_data('test')
+train_x, train_y = dload.load_json_data_no_type('train')
+validate_x, validate_y = dload.load_json_data_no_type('validate')
+test_x, test_y = dload.load_json_data_no_type('test')
 
 print(f"train data count: {len(train_x)}")
 print(f"validate data count: {len(validate_x)}")
 print(f"test data count: {len(test_x)}")
 
-model_path = r"D:\data\biendata\ccks2019_el\ner\m0"
-log_filepath = r"D:\data\biendata\ccks2019_el\ner\m0log"
+model_path = r"D:\data\biendata\ccks2019_el\ner\m0not"
+log_filepath = r"D:\data\biendata\ccks2019_el\ner\m0notlog"
 
 # emn_path = r'D:\data\bert\chinese_L-12_H-768_A-12'
 emn_path = r'D:\data\bert\chinese-bert_chinese_wwm_L-12_H-768_A-12'
@@ -45,7 +45,7 @@ model.fit(train_x,
           train_y,
           x_validate=validate_x,
           y_validate=validate_y,
-          epochs=20,
+          epochs=100,
           batch_size=512,
           labels_weight=True,
           fit_kwargs={'callbacks': [early_stop, log]})
