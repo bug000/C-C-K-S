@@ -14,7 +14,7 @@ import matchzoo as mz
 
 from ccks_all.cut_text import kb_all_text_dic, all_text_dic
 from ccks_all.eval import eval_file
-from ccks_all.predict.predict import Discriminater, Predicter, BiLSTMCRFPredicter
+from ccks_all.predict.predict import Discriminater, Predicter, BiLSTMCRFPredicter, BiLSTMCRFntPredicter
 
 from ccks_all.static import subject_dict, subject_index, id2entity
 
@@ -485,11 +485,12 @@ def step2():
 
 def step1():
     dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
-    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre3.json"
+    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre.json"
 
     """crf"""
-    crf_model_path = r"D:\data\biendata\ccks2019_el\ner\m0.1"
-    crfer = BiLSTMCRFPredicter(crf_model_path, type_filter=True)
+    # crf_model_path = r"D:\data\biendata\ccks2019_el\ner\m0.1"
+    # crfer = BiLSTMCRFPredicter(crf_model_path, type_filter=True)
+    # crfer = BiLSTMCRFntPredicter(crf_model_path)
 
     """jieba"""
     # crfer = CutPredicter()
@@ -523,32 +524,17 @@ r:0.970634415584413
 
 
 
-ner_tpf text
-f:0.8268713155157437
-p:0.9438671957671914
-r:0.7967485222596271
+ner_tpf text=========================================
+f:0.9152651759959956
+p:0.9612169900058762
+r:0.9112619555341728
 
-f:0.8597555403444105
-p:0.9608183421516724
-r:0.8278879990379935
 
 ner_tpf id=========================================
-f:0.6958460835460863
-p:0.7975011463844766
-r:0.6726364411308885
+f:0.7624179162278805
+p:0.7323516296738182
+r:0.9036278285500458
 
-f:0.7251566203343961
-p:0.8120261904761866
-r:0.6999206562984367
 
-ner text============================================
-f:0.8464500719444991
-p:0.937638095238091
-r:0.8261534605312315
-
-ner id
-f:0.46031319051319
-p:0.5167473544973543
-r:0.453965886376993
 
 """

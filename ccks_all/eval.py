@@ -2,8 +2,6 @@ import json
 
 from tqdm import tqdm
 
-from ccks_all.static import subject_dict
-
 
 def load_mention_mess(file_path):
     all_men_texts = []
@@ -33,14 +31,14 @@ def eval_dset(key_mention_ids, result_mention_ids):
         result_mention = set(result_mention_ids[ind])
         key_mention = set(key_mention)
 
-        for k_m in key_mention:
-            if k_m not in subject_dict.keys():
+        # for k_m in key_mention:
+        #     if k_m not in subject_dict.keys():
                 # if k_m not in result_mention:
-                    print(k_m)
+                #     print(k_m)
 
         mention_intersection = list(result_mention.intersection(key_mention))
-        p = 1.0
-        r = 1.0
+        p = 0.0
+        r = 0.0
         if len(result_mention) != 0:
             p = len(mention_intersection) / len(result_mention)
         if len(key_mention) != 0:
@@ -58,9 +56,9 @@ def eval_dset(key_mention_ids, result_mention_ids):
     p_mean = p_all / len(key_mention_ids)
     r_mean = r_all / len(key_mention_ids)
 
-    print("f:{}".format(f_mean))
-    print("p:{}".format(p_mean))
-    print("r:{}".format(r_mean))
+    print(f"f:{f_mean}")
+    print(f"p:{p_mean}")
+    print(f"r:{r_mean}")
 
 
 def eval_file(answer_file, result_file):

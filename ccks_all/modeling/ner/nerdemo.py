@@ -46,7 +46,7 @@ model.fit(train_x,
           x_validate=validate_x,
           y_validate=validate_y,
           epochs=100,
-          batch_size=512,
+          batch_size=1024,
           labels_weight=True,
           fit_kwargs={'callbacks': [early_stop, log]})
 

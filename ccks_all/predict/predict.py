@@ -85,7 +85,9 @@ class BiLSTMCRFPredicter(Predicter):
 
                     # 这种方法提取实体可能有重复现象 ?
                     for token_id_i in range(token_id, len(pre_seq)):
-                        if pre_seq[token_id_i] is NONE:
+                        if pre_seq[token_id_i] is NONE \
+                                or (pre_seq[token_id_i].startswith(BEGIN) and token_id_i != token_id)\
+                                or (pre_seq[token_id_i].startswith(SINGLE) and token_id_i != token_id):
                             subject_id_s = self.get_subject_ids(mention["mention"], type_predict)
                             for subject_id in subject_id_s:
                                 mention["kb_id"] = str(subject_id)
@@ -94,7 +96,7 @@ class BiLSTMCRFPredicter(Predicter):
                                     mention["label"] = "1"
                                 else:
                                     mention["label"] = "0"
-                                mention_data.append(mention)
+                                mention_data.append(mention.copy())
 
                             break
                         mention["mention"] += dev_text[token_id_i]
@@ -108,7 +110,7 @@ class BiLSTMCRFPredicter(Predicter):
                                     mention["label"] = "1"
                                 else:
                                     mention["label"] = "0"
-                                mention_data.append(mention)
+                                mention_data.append(mention.copy())
 
             dev_line["mention_data"] = mention_data
             pre_lines.append(dev_line)
@@ -153,29 +155,35 @@ class BiLSTMCRFntPredicter(Predicter):
             for token_id, entity_mark in enumerate(pre_seq):
                 # 序列开始标志
                 if entity_mark.startswith(BEGIN) or entity_mark.startswith(SINGLE):
-
+                    # 这种方法提取实体可能有重复现象 ?
                     mention = {
                         "kb_id": "",
                         "mention": "",
                         "offset": str(token_id),
                     }
-
-                    # 这种方法提取实体可能有重复现象 ?
                     for token_id_i in range(token_id, len(pre_seq)):
-                        if pre_seq[token_id_i] is NONE:
+                        # 已经等于最后一个索引了，说明直到最后一个 char 都是 entity str
+                        if pre_seq[token_id_i] is NONE \
+                                or (pre_seq[token_id_i].startswith(BEGIN) and token_id_i != token_id) \
+                                or (pre_seq[token_id_i].startswith(SINGLE) and token_id_i != token_id):
                             subject_id_s = self.get_subject_ids(mention["mention"])
                             for subject_id in subject_id_s:
                                 mention["kb_id"] = str(subject_id)
-                                mention_data.append(mention)
+                                mention_data.append(mention.copy())
                             break
                         mention["mention"] += dev_text[token_id_i]
 
-                        # 已经等于最后一个索引了，说明直到最后一个 char 都是 entity str
                         if token_id_i == (len(pre_seq) - 1):
                             subject_id_s = self.get_subject_ids(mention["mention"])
                             for subject_id in subject_id_s:
                                 mention["kb_id"] = str(subject_id)
-                                mention_data.append(mention)
+                                mention_data.append(mention.copy())
+
+                            # if token_id_i == (len(pre_seq) - 1):
+                        #     subject_id_s = self.get_subject_ids(mention["mention"])
+                        #     for subject_id in subject_id_s:
+                        #         mention["kb_id"] = str(subject_id)
+                        #         mention_data.append(mention)
 
             dev_line["mention_data"] = mention_data
             pre_lines.append(dev_line)
