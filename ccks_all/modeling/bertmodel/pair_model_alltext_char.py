@@ -216,7 +216,7 @@ def build_model(lr: float, lr_d: float, process: BertPreProcess):
                         validation_data=val_gener.__iter__(),
                         validation_steps=val_gener.__len__(),
                         class_weight="auto",
-                        callbacks=[check_point, early_stop, tb_cb, metrics])
+                        callbacks=[check_point, early_stop, tb_cb])
 
     model.save(model_path)
     K.clear_session()
