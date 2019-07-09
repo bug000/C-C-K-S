@@ -7,6 +7,7 @@ from typing import List
 import dill
 import jieba
 from keras.engine.saving import load_model
+from keras_bert import get_custom_objects
 from keras_preprocessing.sequence import pad_sequences
 import numpy as np
 from tqdm import tqdm
@@ -342,7 +343,7 @@ class BertClfDiscriminater(Discriminater):
     def __init__(self, model_dir, batch=128):
         model_path = model_dir.format(r"best_model.hdf5")
         self.processer: BertPreProcess = dill.load(open(model_dir.format(r"process.dill"), "rb"))
-        self.model = load_model(model_path)
+        self.model = load_model(model_path, custom_objects=get_custom_objects())
         self.batch = batch
 
     @staticmethod
@@ -379,7 +380,7 @@ class BertClfRankDiscriminater(Discriminater):
     def __init__(self, model_dir, batch=128):
         model_path = model_dir.format(r"best_model.hdf5")
         self.processer: BertPreProcess = dill.load(open(model_dir.format(r"process.dill"), "rb"))
-        self.model = load_model(model_path)
+        self.model = load_model(model_path, custom_objects=get_custom_objects())
         self.batch = batch
 
     @staticmethod
