@@ -341,7 +341,7 @@ class NoneTypeClfDiscriminater(Discriminater):
 class BertClfDiscriminater(Discriminater):
     def __init__(self, model_dir, batch=128):
         model_path = model_dir.format(r"best_model.hdf5")
-        self.processer: BertPreProcess = dill.load(model_dir.format(r"process.dill"))
+        self.processer: BertPreProcess = dill.load(open(model_dir.format(r"process.dill", "rb")))
         self.model = load_model(model_path)
         self.batch = batch
 
@@ -378,7 +378,7 @@ class BertClfDiscriminater(Discriminater):
 class BertClfRankDiscriminater(Discriminater):
     def __init__(self, model_dir, batch=128):
         model_path = model_dir.format(r"best_model.hdf5")
-        self.processer: BertPreProcess = dill.load(model_dir.format(r"process.dill"))
+        self.processer: BertPreProcess = dill.load(open(model_dir.format(r"process.dill", "rb")))
         self.model = load_model(model_path)
         self.batch = batch
 
@@ -544,8 +544,8 @@ def step2(dt="test"):
     # cd = NoneTypeClfDiscriminater(model_dir, batch=256)
 
     model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m21\{}"
-    # cd = BertClfRankDiscriminater(model_dir, batch=1024)
-    cd = BertClfDiscriminater(model_dir, batch=1024)
+    cd = BertClfRankDiscriminater(model_dir, batch=1024)
+    # cd = BertClfDiscriminater(model_dir, batch=1024)
     # model_dir = r"D:/data/biendata/ccks2019_el/entityrank/m4/"
     # cd = RankPredicter(model_dir, batch_size=1024)
     cd.predict_devs(dev_path, result_path)
