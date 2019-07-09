@@ -536,7 +536,7 @@ def step2(dt="test"):
     dev_path = f"D:/data/biendata/ccks2019_el/ccks_train_data/{dt}.json.crf.m30.CRFDropModel.expand.pre.json"
     # dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.rank.filter.json"
     # dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.rank.filter.json"
-    result_path = f"D:/data/biendata/ccks2019_el/ccks_train_data/{dt}.json.crf.m30.CRFDropModel.expand.bert.pre.json"
+    result_path = f"D:/data/biendata/ccks2019_el/ccks_train_data/{dt}.json.crf.m30.CRFDropModel.expand.bert.rank.pre.json"
 
     # result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.rank.pre.filter0.6.json"
 
@@ -544,9 +544,10 @@ def step2(dt="test"):
     # cd = NoneTypeClfDiscriminater(model_dir, batch=256)
 
     model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m21\{}"
+    # cd = BertClfRankDiscriminater(model_dir, batch=1024)
     cd = BertClfDiscriminater(model_dir, batch=1024)
     # model_dir = r"D:/data/biendata/ccks2019_el/entityrank/m4/"
-    cd = RankPredicter(model_dir, batch_size=1024)
+    # cd = RankPredicter(model_dir, batch_size=1024)
     cd.predict_devs(dev_path, result_path)
 
     eval_file(key_path, result_path)

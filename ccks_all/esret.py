@@ -3,7 +3,7 @@ from nltk.metrics.distance import jaccard_distance
 from elasticsearch import Elasticsearch
 
 es_servers = [{
-    "host": "localhost",
+    "host": "10.21.109.100",
     "port": "9200"
 }]
 es = Elasticsearch(es_servers)
