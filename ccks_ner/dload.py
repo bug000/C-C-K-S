@@ -46,8 +46,8 @@ def load_json_data(data_type):
 
 
 def load_json_data_no_type(data_type):
-    BEGIN = "B"
-    ENTITY = "I"
+    BEGIN = "B-LOC"
+    ENTITY = "I-LOC"
     NONE = "O"
 
     data_dir = r"D:\data\biendata\ccks2019_el\ccks_train_data\{}.json"
@@ -64,14 +64,14 @@ def load_json_data_no_type(data_type):
 
         for men in mention_data:
             kb_id = men["kb_id"]
-            if kb_id != "NIL":
-                men_len = len(men["mention"])
-                men_offset = int(men["offset"])
+            # if kb_id != "NIL":
+            men_len = len(men["mention"])
+            men_offset = int(men["offset"])
 
-                for i in range(men_offset, men_offset + men_len):
-                    y_line[i] = ENTITY
-                y_line[men_offset + men_len - 1] = ENTITY
-                y_line[men_offset] = BEGIN
+            for i in range(men_offset, men_offset + men_len):
+                y_line[i] = ENTITY
+            y_line[men_offset + men_len - 1] = ENTITY
+            y_line[men_offset] = BEGIN
 
         data_x.append(x_line)
         data_y.append(y_line)
@@ -119,3 +119,6 @@ def load_entity_clf_cut_data(data_type: str):
             data_y.append(label)
 
     return data_x, data_y
+
+
+

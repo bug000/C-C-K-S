@@ -1,58 +1,64 @@
-from kashgari.tasks.seq_labeling import BLSTMCRFModel
+import os
+import random
+
+import numpy as np
+import tensorflow as tf
+
 from kashgari.embeddings import BERTEmbedding
+from kashgari.tasks.seq_labeling import BLSTMCRFModel
 from keras.callbacks import EarlyStopping, TensorBoard
 
+from ccks_all.modeling.ner.DModel import CRFModel, CRFDropModel
 from ccks_ner import dload
+
+seed = 123
+random.seed(seed)
+np.random.seed(seed)
+tf.set_random_seed(seed)
+
 
 train_x, train_y = dload.load_json_data_no_type('train')
 validate_x, validate_y = dload.load_json_data_no_type('validate')
 test_x, test_y = dload.load_json_data_no_type('test')
 
-print(f"train data count: {len(train_x)}")
-print(f"validate data count: {len(validate_x)}")
-print(f"test data count: {len(test_x)}")
 
-model_path = r"D:\data\biendata\ccks2019_el\ner\m0not"
-log_filepath = r"D:\data\biendata\ccks2019_el\ner\m0notlog"
+model_path = r"D:\data\biendata\ccks2019_el\ner\m30.CRFDropModel"
+if not os.path.exists(model_path):
+    os.makedirs(model_path)
+log_filepath = r"D:\data\biendata\ccks2019_el\ner\m30.CRFDropModel.log"
 
 # emn_path = r'D:\data\bert\chinese_L-12_H-768_A-12'
 emn_path = r'D:\data\bert\chinese-bert_chinese_wwm_L-12_H-768_A-12'
 
 # check_point = ModelCheckpoint(model_path, monitor="val_loss", verbose=1, save_best_only=True, mode="min")
 
-early_stop = EarlyStopping(monitor="val_loss", mode="min", patience=2)
+early_stop = EarlyStopping(monitor="val_loss", mode="min", patience=1)
 # early_stop = EarlyStopping(monitor="val_crf_accuracy", mode="max", patience=2)
 
 log = TensorBoard(log_dir=log_filepath, write_images=False, write_graph=True, histogram_freq=0)
 
-embedding = BERTEmbedding(emn_path, 50)
+embedding = BERTEmbedding(emn_path, sequence_length=40, trainable=False)
 
-model = BLSTMCRFModel(embedding)
-
-model.__base_hyper_parameters__ = {
-        'lstm_layer': {
-            'units': 256,
-            'return_sequences': True
-        },
-        'dense_layer': {
-            'units': 64,
-            'activation': 'tanh'
-        }
-    }
-
+# model = BLSTMCRFModel(embedding)
+# model = CRFModel(embedding)
+model = CRFDropModel(embedding)
 
 model.fit(train_x,
           train_y,
           x_validate=validate_x,
           y_validate=validate_y,
-          epochs=100,
+          epochs=30,
           batch_size=1024,
           labels_weight=True,
-          fit_kwargs={'callbacks': [early_stop, log]})
+          fit_kwargs={
+              'callbacks': [early_stop],
+              # 'validation_split': 0.3,
+          })
 
 model.evaluate(test_x, test_y)
 
 model.save(model_path)
+
 """
 ep20
                         precision    recall  f1-score   support
@@ -184,4 +190,3 @@ scientificorganization     0.8710    0.9643    0.9153        56
 
 
 """
-

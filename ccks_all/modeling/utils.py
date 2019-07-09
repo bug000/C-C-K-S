@@ -6,7 +6,7 @@ from keras import backend as K
 
 
 class Metrics(Callback):
-    def __init__(self, y_index: int = 2):
+    def __init__(self, y_index: int = -1):
         super().__init__()
         self.y_index = y_index
         self.val_recalls = []

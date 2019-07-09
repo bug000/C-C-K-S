@@ -14,9 +14,10 @@ import matchzoo as mz
 
 from ccks_all.cut_text import kb_all_text_dic, all_text_dic
 from ccks_all.eval import eval_file
+from ccks_all.modeling.bertmodel.preprocess import BertPreProcess
 from ccks_all.predict.predict import Discriminater, Predicter, BiLSTMCRFPredicter
 
-from ccks_all.static import subject_dict, subject_index, id2entity
+from ccks_all.static import subject_dict, id2entity
 
 
 class NgramPredicter(Predicter):
@@ -102,12 +103,13 @@ class CutPredicter(Predicter):
 
         print("load dic.")
 
-    def __init__(self):
+    def __init__(self, save_label=False):
         """
             mention : entity_json_line
         """
         self.subject_dic = subject_dict
         self.load_jieba_dic()
+        self.save_label = save_label
 
     def dsc_token(self, text: str):
         fds = re.findall(r"《([^《|》]*)》", text)
@@ -120,20 +122,6 @@ class CutPredicter(Predicter):
         for fd_str in fds:
             ind = text.find(fd_str)
             yield fd_str, ind
-
-    # def sim_token(self, text: str):
-    #     fds = re.findall(r"\b[a-z\d ]{1,100}\b", text)
-    #     for fd_str in fds:
-    #         ind = text.find(fd_str)
-    #         yield fd_str, ind
-
-    def jaccard(self, text1, text2):
-        text1 = set(text1)  # 去重；如果不需要就改为list
-        text2 = set(text2)
-        i = text1 & text2  # 交集
-        u = text1 | text2  # 并集
-        jaccard_coefficient = float(len(i) / len(u))
-        return jaccard_coefficient
 
     def _save_tk_result_tf(self, tokens, mention_data_set, key_mention_ids, contain_set):
         for token in tokens:
@@ -161,29 +149,16 @@ class CutPredicter(Predicter):
                                 "offset": mention_offset,
                                 "label": "0"
                             })
-            # else:
-            # if len(mention_text) > 3:
-            #     subject_id = subject_index.retrivl(mention_text)[0]
-            #     if subject_id in key_mention_ids:
-            #         mention_data_set.append({
-            #             "kb_id": subject_id,
-            #             "mention": mention_text,
-            #             "offset": mention_offset,
-            #             "label": "1"
-            #         })
-            #     else:
-            #         mention_data_set.append({
-            #             "kb_id": subject_id,
-            #             "mention": mention_text,
-            #             "offset": mention_offset,
-            #             "label": "0"
-            #         })
+                        if not self.save_label:
+                            mention_data_set.pop("label")
 
     def pre_one(self, json_line):
         mention_data = []
         text = json_line["text"]
-        key_mention_ids = [m["kb_id"] for m in json_line["mention_data"]]
-
+        if "mention_data" in json_line:
+            key_mention_ids = [m["kb_id"] for m in json_line["mention_data"]]
+        else:
+            key_mention_ids = []
         contain_set = set()
 
         # jieba_result = jieba.tokenize(text, mode="default", HMM=False)
@@ -363,6 +338,98 @@ class NoneTypeClfDiscriminater(Discriminater):
         return [self.filt_json_line(line, self.batch) for line in tqdm(json_lines)]
 
 
+class BertClfDiscriminater(Discriminater):
+    def __init__(self, model_dir, batch=128):
+        model_path = model_dir.format(r"best_model.hdf5")
+        self.processer: BertPreProcess = dill.load(model_dir.format(r"process.dill"))
+        self.model = load_model(model_path)
+        self.batch = batch
+
+    @staticmethod
+    def seq_padding(X, padding=0):
+        L = [len(x) for x in X]
+        ML = max(L)
+        return np.array([
+            np.concatenate([x, [padding] * (ML - len(x))]) if len(x) < ML else x for x in X
+        ])
+
+    def filt_json_line(self, tdata):
+        mention_data = tdata["mention_data"]
+        mention_data_dic = {mention["kb_id"]: mention for mention in mention_data}
+        mention_ind_dic = {}
+        for i, mention in enumerate(mention_data):
+            kb_id = mention["kb_id"]
+            mention_ind_dic[i] = kb_id
+        batch_X = self.processer.process_json(tdata)
+        pred = self.model.predict(batch_X, batch_size=self.batch)
+        predictions = [1 if pre[0] > 0.5 else 0 for pre in pred]
+        mention_data_n = []
+        for i, pre in enumerate(predictions):
+            if pre == 1:
+                mention_data_n.append(mention_data_dic[mention_ind_dic[i]])
+        tdata["mention_data"] = mention_data_n
+        return tdata
+
+    def predict(self, json_lines):
+        # return list(map(self.filt_json_line, json_lines))
+        return [self.filt_json_line(line) for line in tqdm(json_lines)]
+
+
+class BertClfRankDiscriminater(Discriminater):
+    def __init__(self, model_dir, batch=128):
+        model_path = model_dir.format(r"best_model.hdf5")
+        self.processer: BertPreProcess = dill.load(model_dir.format(r"process.dill"))
+        self.model = load_model(model_path)
+        self.batch = batch
+
+    @staticmethod
+    def seq_padding(X, padding=0):
+        L = [len(x) for x in X]
+        ML = max(L)
+        return np.array([
+            np.concatenate([x, [padding] * (ML - len(x))]) if len(x) < ML else x for x in X
+        ])
+
+    def filt_json_line(self, tdata):
+        mention_data = tdata["mention_data"]
+        mention_data_dic = {mention["kb_id"]: mention for mention in mention_data}
+        mention_ind_dic = {}
+        for i, mention in enumerate(mention_data):
+            kb_id = mention["kb_id"]
+            mention_ind_dic[i] = kb_id
+        batch_X = self.processer.process_json(tdata)
+        pred = self.model.predict(batch_X, batch_size=self.batch)
+
+        predictions = [1 if pre[0] > 0.5 else 0 for pre in pred]
+
+        self.rank_pre_extract(mention_data, predictions)
+
+        mention_data_n = []
+        for i, pre in enumerate(predictions):
+            if pre == 1:
+                mention_data_n.append(mention_data_dic[mention_ind_dic[i]])
+        tdata["mention_data"] = mention_data_n
+        return tdata
+
+    def rank_pre_extract(self, mention_data, predictions):
+        """
+                mention_text pre subject_id
+            0   a            0.2    1
+            1   a            0.5    2
+            2   b            0.1    9
+        """
+        mdata = pd.DataFrame(mention_data)
+
+
+
+        pass
+
+
+    def predict(self, json_lines):
+        # return list(map(self.filt_json_line, json_lines))
+        return [self.filt_json_line(line) for line in tqdm(json_lines)]
+
+
 class RankPredicter(Discriminater):
 
     def __init__(self, model_path, batch_size=8):
@@ -461,39 +528,41 @@ class RankPredicter(Discriminater):
         return [self.filt_json_line(line) for line in tqdm(json_lines)]
 
 
-def step2():
+def step2(dt="test"):
     # key_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
-    key_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
+    key_path = f"D:/data/biendata/ccks2019_el/ccks_train_data/{dt}.json"
 
-    dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre.json"
+    dev_path = f"D:/data/biendata/ccks2019_el/ccks_train_data/{dt}.json.crf.m30.CRFDropModel.expand.pre.json"
     # dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.rank.filter.json"
     # dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.rank.filter.json"
-    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre.rank.json"
+    result_path = f"D:/data/biendata/ccks2019_el/ccks_train_data/{dt}.json.crf.m30.CRFDropModel.expand.bert.pre.json"
 
     # result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.jieba.rank.pre.filter0.6.json"
 
-    # model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m11\{}"
-
     # model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m18\{}"
     # cd = NoneTypeClfDiscriminater(model_dir, batch=256)
-    model_dir = r"D:/data/biendata/ccks2019_el/entityrank/m2/"
-    cd = RankPredicter(model_dir, batch_size=256)
+
+    model_dir = r"D:\data\biendata\ccks2019_el\entityclf\m21\{}"
+    cd = BertClfDiscriminater(model_dir, batch=1024)
+    # model_dir = r"D:/data/biendata/ccks2019_el/entityrank/m4/"
+    cd = RankPredicter(model_dir, batch_size=1024)
     cd.predict_devs(dev_path, result_path)
 
     eval_file(key_path, result_path)
 
 
-def step1():
-    dev_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json"
-    result_path = "D:/data/biendata/ccks2019_el/ccks_train_data/test.json.ner.pre.json"
+# validate train test develop
+def step1(dt="validate"):
+    dev_path = f"D:/data/biendata/ccks2019_el/ccks_train_data/{dt}.json"
+    result_path = f"D:/data/biendata/ccks2019_el/ccks_train_data/{dt}.json.crf.m30.CRFDropModel.expand.pre.json"
 
     """crf"""
-    crf_model_path = r"D:\data\biendata\ccks2019_el\ner\m0.1"
-    crfer = BiLSTMCRFPredicter(crf_model_path, type_filter=True, save_label=False, batch=2)
+    crf_model_path = r"D:\data\biendata\ccks2019_el\ner\m30not"
+    crfer = BiLSTMCRFPredicter(crf_model_path, type_filter=False, save_label=True, batch=1024)
     # crfer = BiLSTMCRFntPredicter(crf_model_path)
 
     """jieba"""
-    # crfer = CutPredicter()
+    # crfer = CutPredicter(save_label=True)
 
     """ngram"""
     # crfer = NgramPredicter()
@@ -504,8 +573,8 @@ def step1():
 
 
 def main():
-    step1()
-    # step2()
+    # step1()
+    step2()
 
 
 if __name__ == '__main__':
@@ -534,6 +603,17 @@ ner_tpf id=========================================
 f:0.7624179162278805
 p:0.7323516296738182
 r:0.9036278285500458
+
+
+
+
+f:0.7959180275081573
+p:0.8075291432846932
+r:0.8248637966971254
+id:
+f:0.3745102039660655
+p:0.28848661407669984
+r:0.8254272887606176
 
 
 

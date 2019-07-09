@@ -6,7 +6,6 @@ import pandas as pd
 
 import matchzoo as mz
 from matchzoo import Embedding
-from matchzoo.models import ConvKNRM
 from matchzoo.models import KNRM
 from tqdm import tqdm
 
@@ -141,21 +140,17 @@ embedding = load_emb_from_file(embedding_path)
 print("embedding loaded")
 
 # model = mz.models.MVLSTM()
-model = ConvKNRM()
-# model = KNRM()
+# model = ConvKNRM()
+model = KNRM()
 # model = mz.contrib.models.MatchLSTM()
 model.params.update(preprocessor.context)
 model.params['task'] = ranking_task
 model.params['embedding_output_dim'] = embedding.output_dim
 model.params['embedding_trainable'] = False
-model.params['filters'] = 128
-model.params['conv_activation_func'] = 'tanh'
-model.params['max_ngram'] = 3
-model.params['use_crossmatch'] = True
 model.params['kernel_num'] = 11
 model.params['sigma'] = 0.1
 model.params['exact_sigma'] = 0.001
-model.params['optimizer'] = 'adadelta'
+model.guess_and_fill_missing_params(verbose=0)
 model.build()
 model.compile()
 
@@ -165,14 +160,14 @@ embedding_matrix = embedding.build_matrix(preprocessor.context['vocab_unit'].sta
 model.load_embedding_matrix(embedding_matrix)
 
 val_x, val_y = val_pack_processed.unpack()
-evaluate = mz.callbacks.EvaluateAllMetrics(model, x=val_x, y=val_y, batch_size=64)
+evaluate = mz.callbacks.EvaluateAllMetrics(model, x=val_x, y=val_y, batch_size=1024)
 
 train_generator = mz.DataGenerator(
     train_pack_processed,
     mode='pair',
     num_dup=2,
     num_neg=1,
-    batch_size=8
+    batch_size=64
 )
 # X, y = train_pack_processed.unpack()
 # print('num batches:', len(train_generator))

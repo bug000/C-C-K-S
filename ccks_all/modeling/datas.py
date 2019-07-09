@@ -5,10 +5,52 @@ from sklearn.preprocessing import OneHotEncoder
 from tqdm import tqdm
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
-from ccks_all.cut_text import train_text_dic, all_text_dic, kb_all_text_dic
+from ccks_all.cut_text import all_text_dic, kb_all_text_dic
+from ccks_all.cut_text import load_cut_text
 from ccks_all.static import id2entity
 
 root_dir = r"D:\data\biendata\ccks2019_el\ccks_train_data\{}"
+
+
+def load_pair_clf_data(data_type: str,  line_nub=-1):
+    json_line_s = open(root_dir.format(data_type), "r", encoding="utf-8").readlines()
+    query_data_loder = tqdm(json_line_s)
+    query_data_loder.set_description("load query data lines %s" % data_type)
+    entity_text_dict = load_cut_text("kb_data.all.jieba.text.tsv", col=1)
+
+    id_set = set()
+
+    X_text = []
+    y = []
+
+    for json_line in query_data_loder:
+        tdata = json.loads(json_line)
+        text_id = tdata["text_id"]
+        query_text = tdata["text"]
+        mention_data = tdata["mention_data"]
+        for mention in mention_data:
+            kb_id = mention["kb_id"]
+            pid = text_id + "_" + kb_id
+            if len(id_set) == line_nub:
+                break
+            if pid not in id_set:
+                id_set.add(pid)
+                y_label = int(mention["label"])
+                doc_text = entity_text_dict[kb_id]
+                x_line = []
+                x_line.append("[CLS]")
+                x_line.extend(list(query_text))
+                x_line.append("[SEP]")
+                x_line.extend(list(doc_text))
+                x_line.append("[SEP]")
+
+                X_text.append(x_line)
+                # X_text.append(list("[CLS]" + query_text + "[SEP]" + doc_text + "[SEP]"))
+                y.append(y_label)
+        else:
+            continue
+        break
+    return X_text, y
 
 
 def get_data_all_text(data_type: str, tk: Tokenizer, line_nub=-1):
@@ -306,5 +348,7 @@ def get_data_multi_text(data_type: str, tk: Tokenizer, tktype: Tokenizer, line_n
 
     print("load data .")
     return [X_query_text_pad, X_doc_text_pad, X_subject_text_pad, X_type_pad], y_ohe
+
+
 
 

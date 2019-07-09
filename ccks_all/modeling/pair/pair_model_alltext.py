@@ -203,7 +203,7 @@ def main():
     toka_path = model_dir.format(r"\toka.bin")
     tk = build_vocab(toka_path)
     # load_vocab(toka_path)
-    td_model = build_model(lr=1e-3, lr_d=0, tk=tk, model_dir=model_dir)
+    td_model = build_model(lr=1e-5, lr_d=1e-8, tk=tk, model_dir=model_dir)
     # td_model = get_model()
     predict(td_model, tk=tk)
 

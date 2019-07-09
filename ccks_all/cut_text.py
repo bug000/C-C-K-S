@@ -89,9 +89,8 @@ def load_kb_predicate():
         return {line.split("\t")[0]: line.split("\t")[1] for line in predicaterd.readlines()}
 
 
-def load_kb_tag():
+def load_kb_tag(pp):
     """加载tag列表"""
-    pp = r"kb_data.tag.tsv"
     with open(root_dir.format(pp), "r", encoding="utf-8") as predicaterd:
         return {line.split("\t")[0]: line.split("\t")[2] for line in predicaterd.readlines()}
 
@@ -142,8 +141,13 @@ validate_text_dic = load_cut_text("validate.jieba.text.tsv")
 all_text_dic = dict(dict(train_text_dic, **test_text_dic), **validate_text_dic)
 kb_text_dic = load_cut_text("kb_data.jieba.text.tsv")
 kb_predicate_dic = load_kb_predicate()
-kb_tag_dic = load_kb_tag()
+
+#  id:  tag
+kb_tag_dic = load_kb_tag(r"kb_data.tag.tsv")
+# 分词  id： text
 kb_all_text_dic = load_cut_text("kb_data.all.jieba.text.tsv", col=2)
+# 未分词  id： text
+kb_all_text_dic_char = load_cut_text("kb_data.all.jieba.text.tsv", col=1)
 
 
 def main():

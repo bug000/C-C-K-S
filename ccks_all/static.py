@@ -1,6 +1,15 @@
 import json
+from typing import List
+
+from elasticsearch import Elasticsearch
 
 from tqdm import tqdm
+
+es_servers = [{
+    "host": "localhost",
+    "port": "9200"
+}]
+es = Elasticsearch(es_servers)
 
 
 def load_entiy():
@@ -77,8 +86,13 @@ class SubjectIndex(object):
         sorted_sid_count_dic = sorted(sid_count_dic.items(), key=lambda item: item[1], reverse=True)
         return sorted_sid_count_dic[0]
 
-
-subject_index = SubjectIndex()
-
-
-
+# subject_index = SubjectIndex()
+def build_es_index():
+    index = "subject_text"
+    line_iter = tqdm(subject_dict.keys())
+    line_iter.set_description("subject index")
+    for subject in line_iter:
+        doc_body = {
+            "enti": subject
+        }
+        es.index(index=index, doc_type="gl", body=doc_body)
