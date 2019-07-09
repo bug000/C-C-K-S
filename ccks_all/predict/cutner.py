@@ -341,7 +341,7 @@ class NoneTypeClfDiscriminater(Discriminater):
 class BertClfDiscriminater(Discriminater):
     def __init__(self, model_dir, batch=128):
         model_path = model_dir.format(r"best_model.hdf5")
-        self.processer: BertPreProcess = dill.load(open(model_dir.format(r"process.dill", "rb")))
+        self.processer: BertPreProcess = dill.load(open(model_dir.format(r"process.dill"), "rb"))
         self.model = load_model(model_path)
         self.batch = batch
 
@@ -378,7 +378,7 @@ class BertClfDiscriminater(Discriminater):
 class BertClfRankDiscriminater(Discriminater):
     def __init__(self, model_dir, batch=128):
         model_path = model_dir.format(r"best_model.hdf5")
-        self.processer: BertPreProcess = dill.load(open(model_dir.format(r"process.dill", "rb")))
+        self.processer: BertPreProcess = dill.load(open(model_dir.format(r"process.dill"), "rb"))
         self.model = load_model(model_path)
         self.batch = batch
 
