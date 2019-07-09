@@ -141,7 +141,6 @@ class BiLSTMCRFPredicter(Predicter):
                             or (pre_seq[token_id_i].startswith(SINGLE) and token_id_i != token_id):
                         yield mention_text, token_id
                         break
-                    # todo break 存疑  continue
                     mention_text += dev_text[token_id_i]
                     # 已经等于最后一个索引了，说明直到最后一个 char 都是 entity str
                     if token_id_i == (len(pre_seq) - 1):
